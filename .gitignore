@@ -1,0 +1,11 @@
+# このリポジトリは docs/ と CLAUDE.md のみを管理する。
+# 配下の各プロダクトは個別のgitリポジトリなので、既定ですべて無視する。
+/*
+
+# 管理対象のみ許可
+!/.gitignore
+!/CLAUDE.md
+!/docs/
+
+# macOS
+.DS_Store

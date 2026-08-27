@@ -79,6 +79,14 @@ feature / hotfixes ブランチ
 
 - PR先は必ず `release`（`release` がないリポジトリのみ main / master）
 - マージ方式は **squash merge**
+- **CodeRabbit の自動レビューは走らない**（base が `release` のPRでは無効化されている）。
+  レビューを受けたい場合はPR作成直後に明示的にトリガーする。以降の push には自動で再レビューが走る
+
+```bash
+gh pr comment {PR番号} --body "@coderabbitai review"
+```
+
+レビュー開始までは3〜4分程度かかる。監視と指摘対応は `stands-babysit-coderabbit` スキルに任せてよい。
 
 ### 2. release → main / master へのPR（リリース）
 
@@ -89,7 +97,7 @@ feature / hotfixes ブランチ
 - **CodeRabbit のレビューは待たずにマージしてよい**。差分は作業ブランチ → `release` のPRで
   すでにレビュー・対応済みであり、同じ内容への重複レビューになる。
   ここで待つと修正が本番へ届くのが遅れるだけなので、`pending` のままマージして差し支えない
-  （`release` 向けPRでは自動レビューが無効化されるが、main / master 向けPRでは走ることがある）
+  （base が `release` のPRでは自動レビューが無効化されているが、base が main / master のこのPRでは走ることがある）
 
 ### 3. 他者の実装が混じっていないかの確認（必須）
 

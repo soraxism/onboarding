@@ -44,7 +44,7 @@ onb_checked_goals_ids があれば          → それをそのまま「チェ�
 | イントロのチェックマーク / ランチャーのバッジ | complete ∪ display | 開始（表示）した時点で完了扱い |
 | 自動表示条件「ゴール利用状況」 | complete と display を**別々に**判定 | 完了済み / 未完了 / 表示済み / 未表示 の4択（`src/domain/auto-display/ConditionChecker.ts:64-92`） |
 | 公開API `getIncompleteGoalIds()` | complete のみ | 終了ボタン押下のみ完了（`src/stands.onbd.ts:3052-3065`、`src/embed/windowAdapter.ts:51-64`） |
-| トラッキング（レポート集計） | LS非依存。`completed` イベント送信 | `finish` 時のみ送信（`src/stands.onbd.ts:1216-1221`） |
+| レポート（完了UU） | LS非依存。`step displayed` ログを集計 | **最終ステップの表示**（§4 で裏取り。`completed` イベントは集計に使われていない） |
 
 つまり **データとしては既に「完了」と「表示済み」が分離済み**で、
 今回の要望はイントロの表示判定をどちら基準にするか選べるようにする話に落ちる。
@@ -114,35 +114,51 @@ onb_checked_goals_ids があれば          → それをそのまま「チェ�
 連結が設定されたゴールでは最終ステップのボタンが「終了」にならず「次へ」のままになる
 （`src/domain/step/StepExecutor.ts:536-546`）。
 → **「最終ステップの表示＝完了」にすると、連結ありゴールでは「まだ次へ続くのに完了になる」**という状態が生じる。
-仕様として許容するか、連結ありゴールは対象外にするかの判断が必要。
+**この挙動は許容する方針で決定済み**（レポートの完了集計も同じ基準なので、レポートとイントロの表示は一致する）。
 
 ---
 
-## 4. 「ゴール完了を最終ステップの表示にしたい」の影響
+## 4. レポート集計の「ゴール完了」定義（裏取り結果）
 
-要望の解釈が 2 通りあり、影響範囲が大きく変わる。
+**レポートは既に「最終ステップの表示」をゴール完了として集計している。**
+`completed` トラッキングイベントは集計に使われていない。
 
-### 解釈A: イントロのチェックマークだけを最終ステップ表示時に付ける（表示上の完了）
+```python
+# onboarding-batch/src/report_goal_details/functions/aggregate.py:316-317
+df_step = df_step[df_step["step_index"] == df_step["total_steps"]]
+df_step["is_completed"] = 1
+```
 
-- 変更対象は `setLauncher()` の判定と、進行中の DOM 更新のみ
-- トラッキング（レポートの完了数）・自動表示条件・公開APIは**一切変わらない**
-- LS は現状のキーを維持したまま、「最終ステップを表示したゴールID」を持つ新キー
-  （例 `onb_last_step_displayed_goals_{tourID}`）を追加するか、判定時にステップindexから導出する
-- ツアー進行中にチェックを付けるには、`stepShow` の中で
-  `.stands-step-item[data-goalid="X"]` 配下のクラスを `-nocheck` → `-check` に差し替える処理が必要
-  （`modalTemplate` の再生成だけでは進行中の画面に反映されない）
+- 集計元は `type = 'step' AND event = 'displayed'` のログのみ
+  （`src/report_goal_details/queries/event_step_displayed.sql:20-21`）
+- `is_completed = 1` の UU が `completed_uu` として集計され
+  （`aggregate.py:246-257`）、管理画面のレポートAPI
+  （`onboarding-manage-api/api/rest/functions/mng-v1-report-summaries-goals/method_get.py`）が参照する
+- **`onboarding-batch` 内のどの集計クエリにも `event = 'completed'` は存在しない**
+  （全クエリの `event` フィルタは `displayed` / `mounted` / `login` のみ）。
+  つまり `STANDSMotion.finish()` が送っている `completed` イベント（`src/stands.onbd.ts:1216-1221`）は
+  **送信されているが集計では消費されていない**
 
-### 解釈B: 「完了」そのものを最終ステップ表示に変える（トラッキング含む）
+### 定義の対応表（現状）
 
-- `complete_goals` の書き込みを `finish` から `stepShow`（最終ステップ）に移す
-- `completed` トラッキングも同時に移すと、**レポートの「完了数 / 完了率」が跳ね上がる**
-  （終了ボタンを押さず離脱したユーザーも完了に数えられる）。過去データとの比較が壊れる
-- 移さない場合、LS の完了とレポートの完了が食い違い、自動表示条件「完了済み」とレポートが一致しなくなる
-- 公開API `getIncompleteGoalIds()` の返り値も変わるため、顧客側スクリプトの挙動が変わる可能性がある
+| 機能 | 「完了」の判定 |
+|---|---|
+| **レポート（完了UU）** | **最終ステップの表示**（`step_index == total_steps`） |
+| イントロのチェックマーク | 開始（1ステップ目の表示） |
+| LS `onb_complete_goals_` / 自動表示条件「完了済み」/ 公開API | 終了ボタン押下（`finish`） |
 
-**推奨**: 解釈A（表示上の完了のみ）に閉じる。レポート定義には手を入れない。
-「完了」という語をUIに出すとレポートとの不整合が誤解を生むため、
-管理画面のラベルは「チェックマークを付けるタイミング」に寄せる（詳細は UI 設計ドキュメント）。
+3者がすべて別基準になっている。**今回の変更（チェックマークを最終ステップ表示基準にする）は、
+イントロの見た目をレポートの完了定義に一致させる方向の修正**になる。
+
+### Web側で同じ判定を作れるか
+
+作れる。レポートの `step_index` / `total_steps` は onboarding-web が送っている値で、
+
+- `step_index` = `step_data.index`（1始まり。`src/stands.onbd.ts:224`, `getStepData` は `:1059-1076`）
+- `total_steps` = `getGoalObj(goal_id).steps.length`（`src/stands.onbd.ts:3218-3238`）
+
+`stepShow` は `goal_data` / `step_data` を既に取得済み（`src/stands.onbd.ts:847-848`）なので、
+`step_data.index === goal.steps.length` で**レポートと同一基準**の判定ができる。
 
 ---
 
@@ -152,7 +168,7 @@ onb_checked_goals_ids があれば          → それをそのまま「チェ�
 |---|---|---|
 | ランチャーのバッジ数 | チェック判定と同じ配列を参照（`src/onboarding-init.ts:717-720`） | タイミング設定に連動して数字が変わる。仕様として明示が必要 |
 | 公開API `setCheckedGoalIds()` | `onb_checked_goals_ids` があると**タイミング設定より優先**される（`src/onboarding-init.ts:655-660`） | このAPIを使っている顧客では新設定が効かない。仕様として明記が必要 |
-| クライアント個別カスタムJS | `src/customize/prod/65/makeup_preview.js`（独自 finish で complete 書き込み + `setCheckedGoalIds`）、`src/customize/prod/7738`・`7740`・`13`（display_goals ベースで「確認済み/未確認」表示を自前実装）、`prod/28`・`23`・`722`・`957`・`982`・`999` | **今回の機能は、これら個別対応の標準化にあたる**。既存カスタムと二重制御になるため、標準機能に寄せるかカスタムを残すかを顧客ごとに判断する |
+| クライアント個別カスタムJS | 下表のとおり（`src/customize/prod/`） | **既定値のままなら全顧客で無影響**。詳細は §8 |
 | E2Eテスト | `onboarding-e2e-test/tests/common/intro/goalDisplayed.js:132-165`（**ゴールを開いて中断 → チェックが付く**ことを検証）、`goalCompleted.js:154` | デフォルト値を現行維持（開始時）にすれば `goalDisplayed.js` はそのまま通る。「終了時」用のシナリオを追加する |
 | ユニットテスト | `tests/unit/onboarding-init.test.ts:1069,1218,1526`、`tests/unit/stands.onbd.test.ts:2674,2693,2830,4090`、`tests/unit/domain/auto-display/ConditionChecker.test.ts` | 判定分岐の追加に伴いケース追加が必要 |
 | 旧実装（`src/js/`） | `src/js/onboarding-init.js:529-540`、`src/js/stands.onbd.js:758-766,1111-1119` に同じロジックが残存 | TS移行済みの `src/` が現行。旧実装への同時反映が必要か要確認（`docs/knowledge/2026-05-28_onbs-1748-newside-dual-edit.md` 参照） |
@@ -191,3 +207,74 @@ onboarding-web
 
 `settings` の各キーは `opt` のトップレベルにそのまま載る（実例: `opt` = tourID / intro / styles / lang / tourMap …）。
 `settings.intro` は既定値の `intro` を**丸ごと置換**する点に注意（浅マージのため）。
+
+---
+
+## 7. 設定を切り替えたときチェックマークは引き継がれるか（重要）
+
+結論: **「終了ボタンまで押したゴール」は引き継がれる。「最終ステップを表示したが終了ボタンを
+押さなかったゴール」は引き継がれず、チェックが外れる。**
+
+### 前提: 過去の「最終ステップ到達」はLSに記録されていない
+
+| LSキー | 記録内容 | 移行に使えるか |
+|---|---|---|
+| `onb_display_goals_` | ゴールを開いた（1ステップでも表示した）ゴールID | 使えるが「開いただけ」も含む |
+| `onb_complete_goals_` | 終了ボタンを押したゴールID | 使える（最終ステップ表示を含意する） |
+| `iGuider_data-{tourID}` | ページ遷移をまたぐ復元用の `{ tourId, stepValue }`。**ゴール別の履歴ではなく、`finish` / `abort` で削除される**（`src/domain/tour/TourCallbacks.ts:88-92`, `src/domain/step/StepNavigation.ts:127-139`） | **使えない** |
+| `onb_current_step_index` | 現在のステップindex（1つだけ。ゴール別ではない） | 使えない |
+
+→ 「最終ステップまで見たが終了ボタンを押していない」状態を**過去に遡って判別する手段は存在しない**。
+
+### 切替後の判定を `complete_goals ∪ last_step_displayed_goals` にした場合
+
+| 過去のユーザー状態 | 現行の見た目 | 切替後 | 結果 |
+|---|---|---|---|
+| 終了ボタンまで押した | ✓ | `complete_goals` に残っている → ✓ | **維持される** |
+| 最終ステップを表示 → × で閉じた | ✓ | どちらのキーにも記録がない → ✗ | **外れる** |
+| 途中まで見て閉じた | ✓ | ✗ | 外れる（設定変更の意図どおり） |
+| 未着手 | ✗ | ✗ | 変化なし |
+
+判定を `last_step_displayed_goals` 単独にすると、**過去に完了したゴールのチェックまで外れる**ため、
+`complete_goals` との論理和にすることが必須。
+`finish` は最終ステップを表示した後にしか発火しないため（`src/domain/step/StepExecutor.ts:138-146`）、
+新実装後は `complete_goals ⊆ last_step_displayed_goals` が成り立ち、論理和にしても二重計上の問題はない。
+顧客カスタムが `complete_goals` に独自書き込みしている場合（`src/customize/prod/65`）も論理和なら維持される。
+
+### 引き継ぎの穴を埋める選択肢
+
+| 案 | 内容 | 評価 |
+|---|---|---|
+| **案1（推奨）** | 何もしない。「切替後は新しい基準で再判定される」を仕様として明記 | 設定変更は顧客の意図的な操作であり説明可能。ただし「最終ステップまで見たが閉じた」ユーザーのチェックは外れる |
+| 案2 | 新キーを**設定値に関わらず常に記録する**（リリース時点から記録開始） | リリース〜設定変更までの期間が長ければ穴はほぼ埋まる。**案1と併用すべき**。追加コストは最終ステップ表示時の1書き込みのみ |
+| 案3 | 一度きりの移行処理: 設定が「最終ステップ表示」で未移行なら `display_goals` を新キーへ一括コピーし、移行済みフラグを立てる | 既存ユーザーのチェックは**完全に維持**される。ただし「開いただけ」のゴールもチェックが残るため、設定変更の効果が既存ユーザーには即座に現れない |
+
+**推奨は案1 + 案2**。案2（常時記録）を入れておけば、リリース後に発生した「最終ステップ表示」は
+設定を切り替える前から蓄積されるため、切替時点の引き継ぎ精度が上がる。
+既存ユーザーのチェックを1つも減らしたくない場合のみ案3を検討する。
+
+### 「開いたとき」に戻す場合
+
+`onb_display_goals_` は設定に関わらず記録し続けるため（`stepShow` の既存処理）、
+**いつでも元の基準に戻せる**。データが失われることはない。
+
+---
+
+## 8. 顧客個別カスタムJSへの影響（調査結果）
+
+方針として顧客カスタムは標準機能に寄せない前提で、**標準実装の変更がカスタムを壊さないか**を確認した。
+
+| 顧客 | カスタムの内容 | 影響 |
+|---|---|---|
+| `prod/65` | 独自の finish 処理で `complete_goals` に書き込み、`STANDSMotion.setCheckedGoalIds(comp_goals)` を呼ぶ（`makeup_preview.js:20-54,89,155`） | **無影響**。`onb_checked_goals_ids` が設定されるため `setLauncher()` はそちらを最優先で使い、新設定は判定に入らない（設定しても効かないだけ） |
+| `prod/28` | `complete_goals` を読んで「完了済みか」で次に開始するゴールを出し分ける（`makeup_preview.js:277-280`） | **新キー方式なら無影響**。`complete_goals` の書き込みタイミングを変えない設計が前提。既存キーを流用すると**この顧客のゴール出し分けが変わる** |
+| `prod/7738` / `7740` / `13` | `display_goals` を読み、`stands-step-item-check` / `-nocheck` を全ゴール分自前で上書きし「確認済み/未確認」テキストを付ける。`onb_ext_create` / `onb_ext_step_show` / `onb_ext_finish` / `onb_ext_abort` を使用 | **無影響**。標準の初期クラスを自前で上書きするため最終的な見た目はカスタム側が決める。`onb_ext_step_show` は標準の `stepShow` 処理の**後**に呼ばれる（`src/stands.onbd.ts:873-875`）ので、進行中のDOM更新を追加してもカスタムが後勝ちになる |
+| `prod/23` / `722` / `957` / `982` / `999` | 同系統（`display_goals` ベースの自前クラス上書き）。フックは `onb_ext_create` / `onb_ext_start` のみ | **無影響**。ただしイントロ非表示中に標準のDOM更新が走るため、カスタムの再描画（`onb_ext_create` 等）までの間だけ標準判定のクラスが残る。イントロは通常閉じているため実害なし |
+
+### 実装条件（カスタム顧客への影響をゼロにするため）
+
+- **`complete_goals` / `display_goals` の書き込みタイミングは変えない**。
+  「最終ステップ表示」は新キー（例 `onb_last_step_displayed_goals_{tourID}`）に記録する
+  → `prod/28` のゴール出し分け、自動表示条件「完了済み」、公開API `getIncompleteGoalIds()` がすべて不変
+- **進行中のイントロDOM更新は、設定が「最終ステップ表示」のときだけ実行する**
+  → 既定値（ゴールを開いたとき）の顧客では新しいDOM操作が一切走らない

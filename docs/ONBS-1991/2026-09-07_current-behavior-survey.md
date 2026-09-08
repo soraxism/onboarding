@@ -157,16 +157,24 @@ onb_checked_goals_ids があれば          → それをそのまま「チェ�
 | ユニットテスト | `tests/unit/onboarding-init.test.ts:1069,1218,1526`、`tests/unit/stands.onbd.test.ts:2674,2693,2830,4090`、`tests/unit/domain/auto-display/ConditionChecker.test.ts` | 判定分岐の追加に伴いケース追加が必要 |
 | 旧実装（`src/js/`） | `src/js/onboarding-init.js:529-540`、`src/js/stands.onbd.js:758-766,1111-1119` に同じロジックが残存 | TS移行済みの `src/` が現行。旧実装への同時反映が必要か要確認（`docs/knowledge/2026-05-28_onbs-1748-newside-dual-edit.md` 参照） |
 | 仕様書 | `docs/spec/01_initialization.md:249`（setLauncher の処理フロー）、`docs/spec/16_core-engine.md:443-444`、`docs/spec/15_customer-customization.md:201-202` | 実装後に更新が必要 |
+| **エディタ拡張機能** | ツアーのイントロは拡張機能でも編集でき、チェックマークの色設定が既に存在する（`Onboarding-Editor-Extension/vue-app/components/Common/TaskListMenu/index.vue` ほか） | **設定UIの実装が必須**。さらに拡張機能の保存APIが `styles.intro` を丸ごと置換するため、管理画面で設定した値が消える。詳細と対応は設計ドキュメント §4-(2) / §6 |
 
 ---
 
 ## 6. 参考: データフロー全体
 
+**編集経路は2つある**（どちらも同じ `tours.json_src` を編集する）。
+
 ```
-管理画面 (onboarding-manage-web)
-  steps_json_src.settings.*
-        │ WebSocket（例: tourStylesUpdate / introCoverUpdate）
-        ▼
+管理画面 (onboarding-manage-web)              エディタ拡張機能 (Onboarding-Editor-Extension)
+  steps_json_src.settings.*                     steps_json_src.settings.*
+        │ WebSocket                                   │ REST
+        │  例: tourStylesUpdate / introCoverUpdate    │  例: PUT tours/{id}/intro-style
+        │                                             │      PUT tours/{id}/intro-cover-image
+        ▼                                             ▼
+  api/websocket                                 api/rest-ext-editor
+        └─────────────────┬───────────────────────────┘
+                          ▼
 onboarding-manage-api
   DB tours.json_src 更新 + S3 guides/tours/{id}/steps_preview.json 出力
         │   （intro.content_blocks → intro.content 変換: api/websocket/layers/python/lib/common.py:545-576）

@@ -48,7 +48,8 @@
 | `goal_finished` | ゴールを完了したとき | 「終了」ボタン押下時 |
 
 - 保存先は `steps_json_src.settings.styles.intro.checkmarkTiming`（ツアー単位）
-  → 既存の WebSocket `tourStylesUpdate` に相乗りでき、**管理API / 配信APIの変更は不要**
+  → 管理画面は既存の WebSocket `tourStylesUpdate` に相乗りでき、**配信APIの変更は不要**
+- **エディタ拡張機能側にも同じ設定UIを実装する**（イントロは両方で編集できるため）
 - 未設定のツアーは `goal_started` として扱い、既存ツアーの見え方を変えない
 - ランチャーの未完了バッジ数も同じ基準で数えるため、設定に連動して変わる（仕様として明示する）
 
@@ -68,9 +69,20 @@
 |---|---|
 | `onboarding-web` | チェック判定・最終ステップ記録・イントロDOM更新・LSキー追加・型・ユニットテスト・仕様書 |
 | `onboarding-manage-web` | 表示スタイル設定モーダル（イントロタブ）にラジオ追加、補足文の修正 |
-| `onboarding-manage-api` | 変更なし（`tourStylesUpdate` が styles を丸ごと保存するため） |
+| `Onboarding-Editor-Extension` | **設定UIの実装が必須**。ツアーのイントロは拡張機能でも編集でき、チェックマークの色設定が既に存在する（ゴール一覧選択時のインラインメニュー）。UI・emit中継・composable・型・ダミー・テストで計8ファイル程度 |
+| `onboarding-manage-api` | 管理画面用WS（`tourStylesUpdate`）は変更なし。**拡張機能用の `PUT tours/{id}/intro-style` は修正が必須**（下記） |
 | `onboarding-api` | 変更なし（`settings` をそのまま配信するため） |
 | `onboarding-e2e-test` | `tests/common/intro/goalDisplayed.js` が「開いて中断 → チェックが付く」を検証している。既定値を現行維持にすればそのまま通る。「終了時」シナリオを追加 |
+
+### 併せて直す必要がある既存の問題（設定消失）
+
+エディタ拡張機能のチェック色変更 API（`api/rest-ext-editor/functions/tours-tour-id-intro-style/method_put.py:53`）は
+`settings.styles.intro` を**丸ごと置換**しており、拡張機能が送るのは `checkmark` のみ。
+このままでは**管理画面で設定したタイミングが、拡張機能でチェック色を変えた瞬間に消える**。
+
+- 同APIを部分更新（受け取ったキーのみ上書き）に修正する。cover 更新APIは既に部分更新であり、そちらに揃える
+- 併せて拡張機能側の送信ペイロードにも両キーを含める
+- 管理画面のみ先行リリースすると設定消失が起きるため、**このAPI修正は管理画面リリースと同時に入れる**
 
 ### 注意点
 
@@ -91,3 +103,5 @@
 3. 既定値は現行維持（ゴールを開いたとき）でよいか
 4. ゴール連結ありゴールで「最終ステップ表示＝チェック」を許容するか
 5. 顧客個別カスタム（`prod/65`・`7738`・`7740`・`13` 等）を標準機能に寄せるか
+6. 管理画面とエディタ拡張機能を同時リリースするか（管理画面のみ先行なら、少なくとも
+   `intro-style` APIの部分更新化は同時に入れる）

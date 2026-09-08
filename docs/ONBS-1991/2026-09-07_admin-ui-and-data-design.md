@@ -98,18 +98,41 @@ UIに「ゴール完了のタイミング」と出すとレポートの完了率
 
 `settings` のキーはそのまま配信APIの `opt` に載る（調査ドキュメント §6）。
 
-| 案 | 保存パス | onboarding-web からの参照 | 必要な保存経路 |
-|---|---|---|---|
-| **A（推奨）** | `settings.styles.intro.checkmarkTiming` | `opt.styles.intro.checkmarkTiming` | 既存 `tourStylesUpdate` をそのまま利用（**API側の変更ゼロ**） |
-| B | `settings.intro.checkmark_timing` | `opt.intro.checkmark_timing` | 新規WSルート（`route_introCheckmarkTimingUpdate.py` + `function.yml` 追記 + 管理画面の送信/受信ハンドラ） |
-| C | `settings.checkmarkTiming` | `opt.checkmarkTiming` | 同上（新規WSルート） |
+**編集経路は管理画面とエディタ拡張機能の2つある**（詳細は §6）。保存先の選択はこの2経路の
+上書き挙動に左右されるため、下表の「エディタ拡張機能側」列が判断の要になる。
+
+| 案 | 保存パス | onboarding-web からの参照 | 管理画面側の保存経路 | エディタ拡張機能側 |
+|---|---|---|---|---|
+| **A（推奨）** | `settings.styles.intro.checkmarkTiming` | `opt.styles.intro.checkmarkTiming` | 既存 `tourStylesUpdate` をそのまま利用（**管理API変更なし**） | 既存 `PUT tours/{id}/intro-style` を利用。ただし**API側が `styles.intro` を丸ごと置換しているため部分更新への修正が必須**（§6-3） |
+| B | `settings.intro.checkmark_timing` | `opt.intro.checkmark_timing` | 新規WSルート（`route_introCheckmarkTimingUpdate.py` + `function.yml` 追記 + 管理画面の送信/受信ハンドラ） | 新規RESTエンドポイントが必要（intro系APIは `cover` / `content_blocks` の部分更新のみで、**この経路では値が消えない**） |
+| C | `settings.checkmarkTiming` | `opt.checkmarkTiming` | 同上（新規WSルート） | 同上（新規エンドポイント） |
 
 ### 案Aの注意点（必須）
+
+**(1) `checkmark` の直下に置かないこと**
 
 `styles.intro.checkmark` 配下は **`el.style[key] = value` に流し込まれる**
 （`onboarding-web/src/domain/tour/TourDialogs.ts:54-59`）。
 `checkmark` の**直下**に挙動キーを追加すると `el.style['checkmarkTiming']` への代入が発生するため、
 必ず `styles.intro` 直下（`checkmark` の兄弟）に置くこと。
+
+**(2) エディタ拡張機能の保存で値が消える（対応必須）**
+
+エディタ拡張機能のチェック色変更は `PUT tours/{tour_id}/intro-style` を呼び、
+管理API側が `step_json_src["settings"]["styles"]["intro"] = styles` と
+**`styles.intro` を丸ごと置換する**
+（`onboarding-manage-api/api/rest-ext-editor/functions/tours-tour-id-intro-style/method_put.py:53`）。
+拡張機能が送るのは `{ checkmark: { 'background-color': ... } }` のみのため、
+**管理画面で設定した `checkmarkTiming` は、拡張機能でチェック色を変えた瞬間に失われる**。
+
+対応（両方行うこと）:
+- 管理API側を部分更新に変更する（`styles["intro"]["checkmark"] = styles["checkmark"]` の形にし、
+  受け取ったキーのみ上書きする）。既存の cover 更新は既に部分更新であり、そちらに揃える形になる
+- 拡張機能側の送信ペイロードにも `checkmarkTiming` を含める（受信 API を直せない期間の保険）
+
+管理画面側の `tourStylesUpdate` は `settings["styles"]` を丸ごと置換するが、
+管理画面のデザイン設定モーダルは styles 全体を組み立てて送るため、
+新キーを `onSave` のペイロードに追加すれば消えない。
 
 ```json
 "styles": {
@@ -126,10 +149,12 @@ UIに「ゴール完了のタイミング」と出すとレポートの完了率
 モーダルの保存ボタン1つで styles と intro の**2系統のWSを投げる**ことになり保存の原子性が崩れる
 （片方だけ失敗しうる）。UI位置とデータ位置は揃えるのが素直なので、
 
-- **案1 + A** … 工数最小・保存は1トランザクション（推奨）
-- 案2 + B … 設計はきれい・工数最大
+- **案1 + A** … 工数最小・保存は1トランザクション。ただし**拡張機能APIの部分更新化が必須条件**（推奨）
+- 案2 + B … 設計はきれい・上書き消失のリスクなし。管理画面と拡張機能の**両方に新規エンドポイントが必要**で工数最大
 
-の2ペアで判断する。
+の2ペアで判断する。案Aの必須条件（管理API `intro-style` の部分更新化）は、
+それ自体が既存の潜在バグ（拡張機能で色を変えると styles.intro の他キーが消える構造）の修正にあたるため、
+案Aを選んでも捨て仕事にはならない。
 
 ### 既定値と後方互換
 
@@ -196,14 +221,90 @@ document.querySelector('.stands-step-item[data-goalid="{goalId}"] .stands-step-i
 
 ---
 
-## 6. 変更対象ファイル（案1 + A を選んだ場合）
+## 6. エディタ拡張機能（Onboarding-Editor-Extension）側の実装
+
+**ツアーのイントロは管理画面と拡張機能の両方で編集でき、チェックマークの設定（色）は既に両方に存在する。**
+片方だけに実装すると、拡張機能で編集する顧客はタイミングを変更できず、
+さらに §4 の上書き消失が起きるため、**拡張機能側の実装は必須**。
+
+### 6-1. 現在のチェックマーク設定UI（拡張機能）
+
+拡張機能のイントロ編集は実物を模したWYSIWYGで、ゴール一覧（TaskList）を選択すると
+インラインメニューが開き、そこに「チェック色」がある。
+
+| 役割 | ファイル |
+|---|---|
+| インラインメニュー本体（「チェック色」ボタンがある = **追加先**） | `vue-app/components/Common/TaskListMenu/index.vue` |
+| ゴール一覧要素（メニューを開き、`update:checkmarkColor` を emit） | `vue-app/components/Domain/Element/TaskList/index.vue:24,114` |
+| イントロモーダル本体（emit中継） | `vue-app/components/Domain/Content/Intro/Modal/Body.vue:81,266-267` |
+| イントロ画面（`changeCheckColor` に接続、`tour.checkmarkStyle` を渡す） | `vue-app/components/Domain/Content/Intro/index.vue:138,175` |
+| 状態更新 + API呼び出し（`changeIntroCheckmarkColor`） | `vue-app/composables/useGuide/tour.ts:28-30,58-78` |
+| APIクライアント（`PUT tours/{id}/intro-style`） | `vue-app/composables/useServices/modules/v2/tours.ts:570-592` |
+| 型定義（`Settings.Styles.intro` / `UpdateIntroStyle`） | 同上 `:149-160`, `:349-358` |
+| ダミーデータ | `vue-app/constants/v2/dummies.ts:216,500` |
+| ユニットテスト | `tests/unit/vue-app/composables/useGuide/tour.test.ts:53-88` |
+
+emit が UI から composable まで4段（`TaskListMenu` → `TaskList` → `Modal/Body` → `Intro/index`）で
+中継されているため、**イベントを1つ増やすと4ファイルすべてに追記が必要**。
+
+### 6-2. 拡張機能に必要な変更（案1 + A の場合）
+
+1. `Common/TaskListMenu/index.vue` に「チェックのタイミング」の選択UIを追加（`CommonColorBtn` の隣）
+2. `Domain/Element/TaskList/index.vue` / `Domain/Content/Intro/Modal/Body.vue` /
+   `Domain/Content/Intro/index.vue` に emit・props を中継追加
+3. `composables/useGuide/tour.ts`
+   - getter を追加（`checkmarkTiming`）
+   - `changeIntroCheckmarkTiming()` を追加（`changeIntroCheckmarkColor` と同型）
+   - **`changeIntroCheckmarkColor` / `changeIntroCheckmarkTiming` の両方で、
+     送信ペイロードに `checkmark` と `checkmarkTiming` の両方を含める**（§4 の上書き消失対策）
+4. `composables/useServices/modules/v2/tours.ts` の型 2 箇所に追加
+5. `constants/v2/dummies.ts` のダミーに追加
+6. `tests/unit/vue-app/composables/useGuide/tour.test.ts` にケース追加
+
+### 6-3. 管理API（rest-ext-editor）に必要な変更
+
+`api/rest-ext-editor/functions/tours-tour-id-intro-style/method_put.py`
+
+- L53 `step_json_src["settings"]["styles"]["intro"] = styles` を**部分更新**に変更
+  （受け取ったキーのみ上書き。`checkmark` だけの旧クライアントからのリクエストでも
+  `checkmarkTiming` が保持されるようにする）
+- バリデーション（L38-41）は現在 `styles.get("checkmark") is None` で400を返す。
+  タイミングのみを送るリクエストを許すかどうかで条件を調整する
+  （`validate_put.json` は `styles` を dict 型としか見ていないため変更不要）
+- 参考: cover 更新（`tours-tour-id-intro-cover-image/method_put.py:104-105`）は
+  `intro["cover"] = cover` の部分更新になっており、こちらが本来の形
+
+### 6-4. 影響しないもの（確認済み）
+
+- **エディタ拡張機能のビューワー向けAPI**（`api/rest-ext-viewer`）は認証系のみで、ツアー設定は扱わない
+- **拡張機能のツアー取得**（`api/rest-ext-editor/functions/tours-tour-id/method_get.py`）は
+  `steps_json_src` をそのまま返すため、新キーは自動的に拡張機能へ届く（変更不要）
+- **intro系のその他API**（`intro-blocks` / `intro-block-sort` / `intro-item-sort` /
+  `intro-blocks-block-id`）はいずれも `content_blocks` の部分更新で、`settings.intro` を置換しない
+- **`launcher-style` / `step-style`** も配下を丸ごと置換するが、
+  クライアントが該当ブロック全体を送るため今回の追加では問題にならない
+- 古いデータの styles 補完（`common.set_default_tour_styles`、
+  `onboarding-manage-api/api/rest/layers/python/lib/common.py:2688-2704`）は
+  `initial-data/tour/steps_preview.json` の styles をコピーする。
+  テンプレートに既定値を入れる場合はここにも効く
+
+---
+
+## 7. 変更対象ファイル（案1 + A を選んだ場合）
 
 | リポジトリ | ファイル | 変更内容 |
 |---|---|---|
 | onboarding-manage-web | `app/components/ui/UiGuideEditStylesSettingTour.vue` | イントロタブにラジオ追加 / `defaultStyles.intro` に既定値 / `onSave` のペイロードに追加 / 補足文の修正 |
 | onboarding-manage-web | 同上（`onClickDefaultIntroCheckmark`） | 「デフォルトに戻す」でタイミングも既定へ戻すか要判断 |
 | onboarding-manage-web | `app/store/tour.ts`（`updateStyles`） | 変更不要（styles を丸ごと差し替えるため） |
-| onboarding-manage-api | — | **変更不要**（`tourStylesUpdate` が styles を丸ごと保存） |
+| onboarding-manage-api | — | 管理画面用WS（`tourStylesUpdate`）は**変更不要**（styles を丸ごと保存するため） |
+| onboarding-manage-api | `api/rest-ext-editor/functions/tours-tour-id-intro-style/method_put.py` | **`styles.intro` の丸ごと置換を部分更新に変更（必須）** / バリデーション条件の調整 |
+| Onboarding-Editor-Extension | `vue-app/components/Common/TaskListMenu/index.vue` | タイミング選択UIを追加 |
+| Onboarding-Editor-Extension | `vue-app/components/Domain/Element/TaskList/index.vue`<br>`vue-app/components/Domain/Content/Intro/Modal/Body.vue`<br>`vue-app/components/Domain/Content/Intro/index.vue` | emit / props の中継追加 |
+| Onboarding-Editor-Extension | `vue-app/composables/useGuide/tour.ts` | getter + `changeIntroCheckmarkTiming()` 追加 / 送信ペイロードに両キーを含める |
+| Onboarding-Editor-Extension | `vue-app/composables/useServices/modules/v2/tours.ts` | 型定義 2 箇所（`Settings.Styles.intro` / `UpdateIntroStyle`） |
+| Onboarding-Editor-Extension | `vue-app/constants/v2/dummies.ts` | ダミーデータに追加 |
+| Onboarding-Editor-Extension | `tests/unit/vue-app/composables/useGuide/tour.test.ts` | ケース追加 |
 | onboarding-api | — | **変更不要**（`settings` をそのまま配信） |
 | onboarding-web | `src/onboarding-init.ts` | `setLauncher()` のチェック判定分岐 / `adjustmentStorage()` の掃除追加 |
 | onboarding-web | `src/stands.onbd.ts` | `stepShow` に最終ステップ記録を追加 + イントロDOMの直接更新 |
@@ -215,14 +316,18 @@ document.querySelector('.stands-step-item[data-goalid="{goalId}"] .stands-step-i
 
 ---
 
-## 7. 確認が必要な事項
+## 8. 確認が必要な事項
 
 1. **選択肢は2択か3択か**（「終了時」を「最終ステップ表示」と定義するか、「終了ボタン押下」と分けるか）
 2. **要望の「ゴール完了」は表示上のチェックマークだけか、レポートの完了数も含むか**
    （後者ならレポート数値が変動する。調査ドキュメント §4 解釈B）
 3. **既定値は現行維持（ゴール開始時）でよいか** — 既存ツアーの見え方を変えないため推奨
 4. **UI配置とデータ保存先のペア**（案1+A = 工数最小 / 案2+B = 設計優先）
+   — 案Aを選ぶ場合は管理API `intro-style` の部分更新化が必須（§4-(2), §6-3）
 5. **ゴール連結ありゴールで「最終ステップ表示＝チェック」を許容するか**
 6. **顧客個別カスタム（`src/customize/prod/65`・`7738`・`7740`・`13` など）を標準機能へ寄せるか**
    — 特に `prod/65` は `setCheckedGoalIds()` を使っており、新設定より優先されるため効かない
 7. **旧実装 `src/js/` 側にも同時反映が必要か**（現行は `src/` の TS 実装）
+8. **エディタ拡張機能への実装を同時リリースするか**
+   — 管理画面のみ先行リリースすると、拡張機能でチェック色を変えた顧客の設定が消える
+   （§4-(2)）。少なくとも管理API `intro-style` の部分更新化は管理画面リリースと同時に入れる必要がある

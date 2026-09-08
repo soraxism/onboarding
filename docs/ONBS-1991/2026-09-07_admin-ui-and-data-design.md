@@ -16,6 +16,10 @@
 | リリース | 管理画面・エディタ拡張機能・onboarding-web を**同時リリース** |
 | 設定の粒度 | ツアー単位（§1） |
 | UI配置 / 保存先 | 案1 + 案A（§3 / §4）。管理API `intro-style` の部分更新化が必須 |
+| 設定切替時の引き継ぎ | **許容する**（移行処理は入れない）。終了ボタンを押したゴールは論理和判定で維持される（§5-2-1、調査ドキュメント §7） |
+| 旧実装（`src/js/`） | **同時反映する**。features フラグ `use_refactored_onboarding_init` 未設定のプロダクトは旧版が配信されるため（§5-6） |
+| 新規ツアーのテンプレート | **既定値を入れる**（`steps_preview.json` の `settings.styles.intro`。ポップアップ用テンプレートは `styles.intro` を持たないため対象外） |
+| 「デフォルトに戻す」の挙動 | 実際のUIを見て判断（現状は背景色のみを既定値に戻す実装。§8-1） |
 
 ### レポート集計との関係（裏取り済み）
 
@@ -220,11 +224,41 @@ timing = last_step_displayed                 → complete ∪ last_step_displaye
 
 過去に「最終ステップを表示したが終了ボタンを押していない」状態はLSに記録がなく、遡って復元できない
 （`iGuider_data-{tourID}` は `finish` / `abort` で削除されるため使えない。調査ドキュメント §7）。
+**この欠落は許容する方針で決定済み**（移行処理は入れない）。
 
 - 終了ボタンまで押したゴール → `complete_goals` に残っているのでチェックは**維持される**
+  - **論理和判定（5-1）が維持の前提**。`last_step_displayed` 単独にすると維持されない
+  - 維持されない例外はいずれも LS 自体が失われるケースで、現行実装でも同じ:
+    ブラウザのデータ削除 / シークレットウィンドウ / 別端末・別ブラウザ・別オリジン /
+    第三者スクリプトによる `localStorage.clear()` /
+    プレビュー起動・停止時の `overwriteLocalStorage()`（`onb_` プレフィックスをリセット）
+  - 顧客カスタムが独自に `complete_goals` へ書き込んでいる場合（`src/customize/prod/65`）も論理和で維持される
+  - `setCheckedGoalIds()` を使う顧客では `checked_goals_ids` が最優先されるため、そもそも新設定の判定に入らない
 - 最終ステップを表示して × で閉じたゴール → 記録がないため**チェックが外れる**
 - 5-2 の「常に記録する」を入れておけば、リリース後に発生した到達分は設定切替前から蓄積される
 - 「開いたとき」へ戻す場合は `display_goals` を記録し続けているため**いつでも戻せる**
+
+### 5-6. 旧実装（`src/js/`）への同時反映
+
+配信される JS は features フラグ `use_refactored_onboarding_init` で新旧が切り替わり、
+**フラグ未設定のプロダクトには旧版（`js/onboarding-init.js`）が配信される**
+（`onboarding-api/src/functions/v1/onboarding-init/handler.py:26-28,45-70`）。
+旧側にも実装しないとフラグ未設定の顧客に機能が届かないため、**同時反映する**。
+
+| 旧側の変更箇所 | 内容 | 新側の対応 |
+|---|---|---|
+| `src/js/onboarding-init.js:527-560`（`setLauncher`） | チェック判定の分岐 | `src/onboarding-init.ts:653-673` |
+| `src/js/onboarding-init.js`（`adjustmentStorage`） | 削除済みゴールIDの掃除 | `src/onboarding-init.ts:731-751` |
+| `src/js/stands.onbd.js:760-770`（`stepShow`） | 最終ステップ表示の記録 + 進行中のDOM更新 | `src/stands.onbd.ts:858-870` |
+| `src/js/stands.onbd.js:1111-1119`（`finish`） | 変更なし（`complete_goals` の書き込みは維持） | `src/stands.onbd.ts:1200-1212` |
+
+- 旧側は LS キーがハードコード文字列で、定数化されていない（`'onb_display_goals_' + tour_id` の形）。
+  旧側の流儀に合わせ、**定数化などのリファクタは行わない**（dual-edit の禁則。
+  `onboarding-web/docs/knowledge/2026-05-28_onbs-1748-newside-dual-edit.md`、
+  `.claude/skills/dual-edit/SKILL.md`）
+- **`Onboarding-Html-Template` は変更不要**。旧側のイントロHTML生成は同パッケージ
+  （`main/index.js:170-176`）だが、`isCheck` を引数で受け取るだけで判定は持たない
+  （新側は `src/onboarding-init.ts:47-57` にインライン化済み）
 
 ### 5-3. 進行中のイントロDOM更新
 
@@ -351,6 +385,8 @@ emit が UI から composable まで4段（`TaskListMenu` → `TaskList` → `Mo
 | onboarding-web | `src/infrastructure/storage/constants.ts` | 新規LSキーの追加 |
 | onboarding-web | `src/types/tour-options.d.ts` | `styles.intro` の型に追加 |
 | onboarding-web | `tests/unit/onboarding-init.test.ts` ほか | 判定分岐のケース追加 |
+| onboarding-web（旧側） | `src/js/onboarding-init.js`（`setLauncher` / `adjustmentStorage`）<br>`src/js/stands.onbd.js`（`stepShow`） | **同時反映**（§5-6）。旧側の流儀に合わせ定数化等のリファクタはしない |
+| onboarding-manage-api | `api/rest/initial-data/tour/steps_preview.json` | 新規ツアーテンプレートの `settings.styles.intro` に既定値を追加（`set_default_tour_styles()` の補完経路にも効く）。`steps_preview_for_popup.json` は `styles.intro` を持たないため対象外 |
 | onboarding-e2e-test | `tests/common/intro/goalDisplayed.js` / `goalCompleted.js` | 既定値が現行維持なのでそのまま通る。「最後のステップを表示したとき」設定のシナリオを追加 |
 | onboarding-web | `docs/spec/01_initialization.md` / `16_core-engine.md` / `15_customer-customization.md` | 仕様書の更新 |
 
@@ -358,16 +394,23 @@ emit が UI から composable まで4段（`TaskListMenu` → `TaskList` → `Mo
 
 ## 8. 残っている確認事項
 
-§0 の決定で下記以外は解消済み。
+§0 の決定で下記1件のみ。
 
-1. **設定切替時にチェックが外れるユーザーを許容するか**（調査ドキュメント §7）
-   - 「最終ステップを表示したが終了ボタンを押していない」ユーザーはチェックが外れる。
-     過去分は復元できないため、仕様として許容するか（案1+2）、
-     切替時に `display_goals` を引き継ぐ一度きりの移行を入れるか（案3）
-   - 推奨は案1+2（何もしない + 5-2 の常時記録）
-2. **「デフォルトに戻す」ボタンでタイミングも既定へ戻すか**
-   （管理画面 `onClickDefaultIntroCheckmark`。色だけ戻す方が利用者の期待に近い可能性）
-3. **旧実装 `src/js/` 側にも同時反映が必要か**（現行は `src/` の TS 実装。
-   `onboarding-web/docs/knowledge/2026-05-28_onbs-1748-newside-dual-edit.md` の運用に従う）
-4. **新規ツアーのテンプレート**（`api/rest/initial-data/tour/steps_preview.json`）に
-   既定値を明示的に入れるか（未定義でも既定値扱いになるため必須ではない）
+### 8-1. 「デフォルトに戻す」ボタンでタイミングも既定へ戻すか（実際のUIを見て判断）
+
+- 対象: 管理画面「表示スタイル設定」→ イントロタブ →「チェックマーク」セクション右上のボタン
+  （`onboarding-manage-web/app/components/ui/UiGuideEditStylesSettingTour.vue:336-340`）
+- **現状の実装は背景色だけを既定値に戻す**（`:852-855`）:
+
+  ```js
+  onClickDefaultIntroCheckmark() {
+    this.introCheckmarkColor = defaultStyles.intro.checkmark['background-color']
+  }
+  ```
+
+- 同セクションにタイミングのラジオを追加した場合、
+  「デフォルトに戻す」が色だけを戻すのか、タイミングも `goal_started` に戻すのかが利用者から見て曖昧になる
+- 判断の観点: 他タブ（ランチャー / ステップ）の「デフォルトに戻す」もセクション単位で
+  そのセクションの全項目を戻す作りになっているため、**セクション内の全項目を戻す方が一貫する**。
+  ただしタイミングは見た目ではなく挙動の設定なので、色と同じ扱いにすると
+  意図せず挙動が戻る事故が起きうる（実装時にUIを見て決める）

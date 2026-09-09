@@ -156,5 +156,15 @@
 - **完了** `onboarding-manage-api` — `intro-style` の部分更新化、テンプレート既定値（commit `07e239f1`）
 - **完了** `Onboarding-Editor-Extension` — 設定UI・composable・型・テスト・機能ドキュメント（commit `195899d`）。
   `npm test` 914 件緑、型検査・lint 指摘なし
-- **未着手** `onboarding-web`（判定分岐・最終ステップ記録・DOM更新、新旧両側）/
-  `onboarding-e2e-test`（新設定のシナリオ追加）
+- **完了** `onboarding-web` — 判定分岐・最終ステップ記録・進行中のDOM更新（新旧両側）・
+  ユニットテスト13件追加・仕様書更新・ナレッジ記録（commit `74fe9bda`）。
+  `npm test` 3196件緑、型エラーはベースラインと同数、`npm run build_preview:e2e` 成功
+- **完了** 拡張機能のバージョン採番 — エディター拡張（dev 1.52.0 / prod 1.53.0）、
+  onboarding-web のプレビュー拡張（dev 3.121.0 / prod 6.6.0）・ビューワー拡張（dev 1.58.0 / prod 3.6.0）
+- **未着手** `onboarding-e2e-test`（新設定のシナリオ追加）
+
+## 手動テスト
+
+[2026-09-09_test-checklist.md](./2026-09-09_test-checklist.md) に項目書を用意している
+（設定UI / 既定の挙動 / 新設定の挙動 / 設定切替時の引き継ぎ / 顧客カスタムと公開APIの回帰 /
+新旧JSの両経路 / レポートとの整合）。

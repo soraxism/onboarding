@@ -55,10 +55,10 @@
 **チェックマークを付けるタイミング**の選択肢を追加する（既にチェックマークの背景色を設定する場所）。
 **エディタ拡張機能にも同じ設定UIを実装する**（イントロは両方で編集できるため）。
 
-| 値 | ラベル案 | 付くタイミング |
+| 値 | ラベル | 付くタイミング |
 |---|---|---|
-| `goal_started`（**既定**・現行挙動） | ゴールを開いたとき | 1ステップ目の表示時 |
-| `last_step_displayed` | 最後のステップを表示したとき | 最終ステップの表示時（レポートの完了集計と同一基準） |
+| `goal_started`（**既定**・現行挙動） | ゴールの表示（いずれかのステップが表示） | 1ステップ目の表示時 |
+| `last_step_displayed` | ゴールの完了（最後のステップが表示） | 最終ステップの表示時（レポートの完了集計と同一基準） |
 
 - 保存先は `steps_json_src.settings.styles.intro.checkmarkTiming`（ツアー単位）
   → 管理画面は既存の WebSocket `tourStylesUpdate` に相乗りでき、**配信APIの変更は不要**
@@ -111,7 +111,7 @@
 |---|---|
 | `onboarding-web`（新側 TS） | チェック判定・最終ステップ記録・イントロDOM更新・LSキー追加・型・ユニットテスト・仕様書 |
 | `onboarding-web`（旧側 `src/js/`） | **同時反映が必要**。features フラグ `use_refactored_onboarding_init` 未設定のプロダクトには旧版が配信される。対象は `onboarding-init.js`（`setLauncher` / `adjustmentStorage`）と `stands.onbd.js`（`stepShow`）。`Onboarding-Html-Template` は `isCheck` を受け取るだけなので変更不要 |
-| `onboarding-manage-web` | 表示スタイル設定モーダル（イントロタブ）にセレクト追加、補足文の修正（**実装済み**） |
+| `onboarding-manage-web` | 表示スタイル設定モーダル（イントロタブ）に選択UI追加、`UiRadio` に縦並びカードのバリアント追加、補足文の修正（**実装済み**） |
 | `Onboarding-Editor-Extension` | **設定UIの実装が必須**（ゴール一覧選択時のインラインメニュー）。UI・emit中継・composable・型・ダミー・テストで計8ファイル程度 |
 | `onboarding-manage-api` | 管理画面用WS（`tourStylesUpdate`）は変更なし。**拡張機能用の `PUT tours/{id}/intro-style` は修正が必須**（下記）。新規ツアーテンプレート `api/rest/initial-data/tour/steps_preview.json` に既定値を追加 |
 | `onboarding-api` | 変更なし（`settings` をそのまま配信するため） |
@@ -142,7 +142,8 @@
 - 旧実装 `onboarding-web/src/js/` 側にも**同時反映する**
 - 新規ツアーのテンプレートに既定値を**入れる**
 - 管理画面の「デフォルトに戻す」は**背景色だけを戻す現状の挙動を維持する**（タイミングは戻さない）
-- 入力部品は**セレクトボックス**（ラジオは横並び固定でラベルが折り返すため）
+- 入力部品は**カード型ラジオの縦並び**（`UiRadio` に `componentType="cardVertical"` を追加）。
+  選択肢の文言が長くフォーム欄が狭いため、セレクト・横並びラジオ・横並びカードでは収まらなかった
 - バッジ（未完了ゴール数）が連動する旨は**UIに書かない**（未完了ゴール数の表示自体があまり使われておらず、
   設定画面の注記としてはノイズになるため。仕様としては連動する）
 

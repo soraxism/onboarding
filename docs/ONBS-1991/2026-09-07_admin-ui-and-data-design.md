@@ -421,10 +421,39 @@ emit が UI から composable まで4段（`TaskListMenu` → `TaskList` → `Mo
 
 検証: 型検査 0 件 / `npm run test:run` 517 ファイル・7620 件緑 / Storybook 撮影で描画確認済み。
 
+### 完了: onboarding-manage-api（ブランチ `feature/ONBS-1991`、commit `07e239f1`）
+
+| ファイル | 内容 |
+|---|---|
+| `api/rest-ext-editor/functions/tours-tour-id-intro-style/method_put.py` | `styles.intro` の丸ごと置換を部分更新へ変更（`setdefault` + `update`）。バリデーションを「`checkmark` と `checkmarkTiming` のどちらも無いときだけ 400」に緩め、タイミングのみの更新も通す |
+| `api/rest/initial-data/tour/steps_preview.json` | `settings.styles.intro.checkmarkTiming` に既定値 `goal_started` を追加 |
+
+- rest-ext-editor には pytest のテスト基盤が無いため、テストは追加していない
+  （既存の流儀に合わせた）。部分更新の挙動は 3 パターン（旧クライアントの `checkmark` のみ /
+  タイミングのみ / `styles.intro` が無い）で手元検証済み
+- ポップアップ用テンプレート（`steps_preview_for_popup.json`）は `styles.intro` を持たないため対象外
+
+### 完了: Onboarding-Editor-Extension（ブランチ `feature/ONBS-1991`、commit `195899d`）
+
+| ファイル | 内容 |
+|---|---|
+| `vue-app/types/intro.ts`（新規）/ `types/index.ts` | `CheckmarkTiming`（`goal_started` / `last_step_displayed`） |
+| `vue-app/constants/v2/defaultSettings.ts` | `DEFAULT_SETTINGS.INTRO.CHECKMARK_TIMING` |
+| `vue-app/composables/useServices/modules/v2/tours.ts` | `Settings.Styles.intro.checkmarkTiming`（optional）/ `UpdateIntroStyle.Styles.checkmarkTiming`（必須） |
+| `vue-app/composables/useGuide/tour.ts` | `checkmarkTiming` getter / `changeIntroCheckmarkTiming()` / 送信 payload を組み立てる `buildIntroCheckmarkStyles()` |
+| `vue-app/components/Common/TaskListMenu/CheckmarkTimingBtn.vue`（新規） | タイミング選択ボタン（`CanvasMenu/FocusBtn.vue` と同じ `BasePopup` + `BasePanelWrapper` + `BasePulldown` の構成） |
+| `TaskListMenu/index.vue` / `Element/TaskList/index.vue` / `Content/Intro/Modal/Body.vue` / `Content/Intro/index.vue` / `Content/Intro/taskLists.ts` | props / emit の中継とハンドラ接続 |
+| `vue-app/constants/v2/dummies.ts` | ダミーデータに既定値 |
+| `tests/unit/vue-app/composables/useGuide/tour.test.ts` | getter / 色変更時の両キー送信 / タイミング変更 / guide 未設定のケース |
+| `docs/features/ONBS-1991.md`（新規） | 拡張機能側の仕様と注意点（同リポジトリの慣習に従い作成） |
+
+検証: `npm run typecheck` エラー 0 / `npm test` 92 ファイル・914 件緑 / `npm run lint` 指摘なし。
+
+**`changeIntroCheckmarkColor()` も背景色とタイミングの両方を送るようになった**（片方だけ送る実装に戻さないこと）。
+
 ### 未着手
 
 | 対象 | 内容 |
 |---|---|
-| `onboarding-manage-api` | 拡張機能用 `PUT tours/{id}/intro-style` の部分更新化（§6-3・必須）、`initial-data/tour/steps_preview.json` に既定値追加 |
-| `Onboarding-Editor-Extension` | インラインメニューへのタイミング選択追加（§6-2） |
 | `onboarding-web` | 判定分岐・最終ステップ記録・進行中のDOM更新（新側 §5-1〜5-3 / 旧側 §5-6） |
+| `onboarding-e2e-test` | 「最後のステップを表示したとき」設定のシナリオ追加 |

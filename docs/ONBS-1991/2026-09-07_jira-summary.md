@@ -148,7 +148,12 @@
 
 ## 実装状況
 
-- **完了**: `onboarding-manage-web`（ブランチ `feature/ONBS-1991`）
-  — 設定UI・spec・story。型検査 0 件、`npm run test:run` 7620 件緑、Storybook で描画確認済み
-- **未着手**: `onboarding-manage-api`（`intro-style` の部分更新化・テンプレート既定値）/
-  `Onboarding-Editor-Extension`（設定UI）/ `onboarding-web`（判定分岐・最終ステップ記録・DOM更新、新旧両側）
+いずれもブランチ `feature/ONBS-1991`。
+
+- **完了** `onboarding-manage-web` — 設定UI・spec・story。型検査 0 件、`npm run test:run` 7620 件緑、
+  Storybook で描画確認済み（コミットは未実施。同リポジトリの運用に従う）
+- **完了** `onboarding-manage-api` — `intro-style` の部分更新化、テンプレート既定値（commit `07e239f1`）
+- **完了** `Onboarding-Editor-Extension` — 設定UI・composable・型・テスト・機能ドキュメント（commit `195899d`）。
+  `npm test` 914 件緑、型検査・lint 指摘なし
+- **未着手** `onboarding-web`（判定分岐・最終ステップ記録・DOM更新、新旧両側）/
+  `onboarding-e2e-test`（新設定のシナリオ追加）

@@ -19,7 +19,9 @@
 | 設定切替時の引き継ぎ | **許容する**（移行処理は入れない）。終了ボタンを押したゴールは論理和判定で維持される（§5-2-1、調査ドキュメント §7） |
 | 旧実装（`src/js/`） | **同時反映する**。features フラグ `use_refactored_onboarding_init` 未設定のプロダクトは旧版が配信されるため（§5-6） |
 | 新規ツアーのテンプレート | **既定値を入れる**（`steps_preview.json` の `settings.styles.intro`。ポップアップ用テンプレートは `styles.intro` を持たないため対象外） |
-| 「デフォルトに戻す」の挙動 | 実際のUIを見て判断（現状は背景色のみを既定値に戻す実装。§8-1） |
+| 「デフォルトに戻す」の挙動 | **背景色だけを戻す現状の挙動を維持する**（タイミングは戻さない） |
+| 入力部品 | **セレクトボックス**（`ui-select`）。ラジオは横並び固定でラベルが折り返すため（§3） |
+| バッジ連動の注記 | **UIには書かない**。未完了ゴール数の表示自体があまり使われておらず注記がノイズになるため（仕様としては連動する） |
 
 ### レポート集計との関係（裏取り済み）
 
@@ -66,14 +68,24 @@
 
 ## 3. 管理画面UI: 配置案
 
-### 案1（推奨）: ツアーのデザイン設定モーダル → 「イントロ」タブ → 「チェックマーク」セクション
+### 案1（採用・実装済み）: ツアーのデザイン設定モーダル → 「イントロ」タブ → 「チェックマーク」セクション
 
 - 対象ファイル: `app/components/ui/UiGuideEditStylesSettingTour.vue`
-  - タブ定義 `tabList: ['ランチャー', 'イントロ', 'ステップ']`（L809）
-  - 「チェックマーク」セクション（L333-386）に**背景色の設定が既にある**
-- 既存セクションに「チェックマークを付けるタイミング」ラジオを追加する
-- 併せて、現在の補足文「設定した背景色は表示済みゴールのチェックマークにのみ適用されます」（L369）を
-  新仕様に合わせて修正する
+  - タブ定義 `tabList: ['ランチャー', 'イントロ', 'ステップ']`
+  - 「チェックマーク」セクションに**背景色の設定が既にある**
+- 既存セクションの下に inner-section を足し、「チェックマークを付けるタイミング」を置く
+- **入力部品はセレクトボックス（`ui-select`）**。`ui-radio-group` は横並び固定で、
+  フォーム欄の幅が 42% のため「最後のステップを表示したとき」が折り返して崩れる。
+  長いラベルの選択肢は `ui-select` を使う前例がある
+  （ステップオプションの「次へ進むためのアクション」= `TheGuideEditOptionStep.vue` の `eventItems`）。
+  将来3択に増えても崩れない
+- 併せて、補足文「設定した背景色は表示済みゴールのチェックマークにのみ適用されます」を
+  「設定した背景色はチェックマークが付いたゴールにのみ適用されます」に修正する
+  （「表示済み」は旧仕様＝表示＝チェックの前提に基づく表現）
+- **バッジ（未完了ゴール数）が連動する旨はUIに書かない**。未完了ゴール数の表示自体が
+  あまり使われていない機能で、設定画面の注記としてはノイズになるため（仕様としては連動する）
+- 「デフォルトに戻す」は**背景色だけを戻す現状の挙動を維持する**（タイミングは戻さない）。
+  挙動設定が意図せず戻る事故を避けるため
 - プレビュー（`UiGuideEditStylesSettingIntroPreview.vue`）はチェック済み/未チェックの見本を出しているだけなので変更不要
 
 **利点**: 利用者が「チェックマークの設定」を探す場所と一致する。保存経路（`tourStylesUpdate`）を流用でき、
@@ -82,15 +94,17 @@
 
 ```
 [ツアー] 表示スタイル設定
- ┌ ランチャー │ イントロ │ ステップ ─────────────────┐
- │ チェックマーク                    [デフォルトに戻す] │
- │  背景色            [■ #46a6ff ]                     │
- │                                                      │
- │  チェックマークを付けるタイミング                    │
- │   ● ゴールを開いたとき（既定）                       │
- │   ○ 最後のステップを表示したとき                     │
- │   ※ ランチャーの未完了バッジの数も同じ基準で数えます │
- └──────────────────────────────────────────────────────┘
+ ┌ ランチャー │ イントロ │ ステップ ─────────────────────┐
+ │ チェックマーク                        [デフォルトに戻す] │
+ │                                                          │
+ │  背景色                                                  │
+ │  # [ 46a6ff ] ■                                          │
+ │  設定した背景色はチェックマークが付いたゴールにのみ      │
+ │  適用されます                                            │
+ │                                                          │
+ │  チェックマークを付けるタイミング                        │
+ │  [ ゴールを開いたとき                              ▼ ]   │
+ └──────────────────────────────────────────────────────────┘
 ```
 
 ### 案2: イントロウィジェットのオプションパネルに「イントロ設定」を新設
@@ -179,8 +193,9 @@
 - `onboarding-api` 側は `settings` をそのまま流すだけなので変更不要
 - 配信JSONスキーマ（`onboarding-manage-api/api/rest/functions/mng-v1-steps-json/steps_json_schema.json`）は
   `settings` を `{"type": "object"}` としか定義していないため**変更不要**
-- 新規ツアーのテンプレート（`api/rest/initial-data/tour/steps_preview.json`）に既定値を入れるかは任意。
-  入れる場合は `settings.styles.intro` に追加する
+- 新規ツアーのテンプレート（`api/rest/initial-data/tour/steps_preview.json`）の
+  `settings.styles.intro` に既定値を**入れる**（決定）。
+  `set_default_tour_styles()`（古いデータの styles 補完）もこのテンプレートを読むため、補完経路にも効く
 - ツアーコピー（`api/rest/functions/mng-v1-tours-copy/method_post.py`）は `settings` を丸ごと引き継ぐため対応不要
 
 ---
@@ -368,8 +383,10 @@ emit が UI から composable まで4段（`TaskListMenu` → `TaskList` → `Mo
 
 | リポジトリ | ファイル | 変更内容 |
 |---|---|---|
-| onboarding-manage-web | `app/components/ui/UiGuideEditStylesSettingTour.vue` | イントロタブにラジオ追加 / `defaultStyles.intro` に既定値 / `onSave` のペイロードに追加 / 補足文の修正 |
-| onboarding-manage-web | 同上（`onClickDefaultIntroCheckmark`） | 「デフォルトに戻す」でタイミングも既定へ戻すか要判断 |
+| onboarding-manage-web | `app/components/ui/UiGuideEditStylesSettingTour.vue` | **実装済み**: イントロタブにセレクト追加 / `defaultStyles.intro.checkmarkTiming` / `data()` 初期化 / `onSave` のペイロードに追加 / 補足文の修正 |
+| onboarding-manage-web | `spec/components/ui/UiGuideEditStylesSettingTour.spec.ts` | **実装済み**: data 初期化 2 件 + 保存 1 件を追加（計 90 件緑） |
+| onboarding-manage-web | `stories/ui/UiGuideEditStylesSettingTour.stories.ts` | **実装済み**: イントロタブを開く story を 2 件追加（`IntroTab` / `IntroTabLastStepDisplayed`） |
+| onboarding-manage-web | `onClickDefaultIntroCheckmark` | **変更しない**（背景色だけを戻す現状維持で決定） |
 | onboarding-manage-web | `app/store/tour.ts`（`updateStyles`） | 変更不要（styles を丸ごと差し替えるため） |
 | onboarding-manage-api | — | 管理画面用WS（`tourStylesUpdate`）は**変更不要**（styles を丸ごと保存するため） |
 | onboarding-manage-api | `api/rest-ext-editor/functions/tours-tour-id-intro-style/method_put.py` | **`styles.intro` の丸ごと置換を部分更新に変更（必須）** / バリデーション条件の調整 |
@@ -392,25 +409,22 @@ emit が UI から composable まで4段（`TaskListMenu` → `TaskList` → `Mo
 
 ---
 
-## 8. 残っている確認事項
+## 8. 実装状況
 
-§0 の決定で下記1件のみ。
+### 完了: onboarding-manage-web（ブランチ `feature/ONBS-1991`）
 
-### 8-1. 「デフォルトに戻す」ボタンでタイミングも既定へ戻すか（実際のUIを見て判断）
+| ファイル | 内容 |
+|---|---|
+| `app/components/ui/UiGuideEditStylesSettingTour.vue` | イントロタブの「チェックマーク」セクションにタイミングのセレクトを追加。`defaultStyles.intro.checkmarkTiming = 'goal_started'` / `data()` 初期化 / `save()` のペイロード / 背景色の補足文を修正 |
+| `spec/components/ui/UiGuideEditStylesSettingTour.spec.ts` | data 初期化 2 件（値あり / 値なしで既定）、保存 1 件（`intro.checkmarkTiming` が渡る）を追加 |
+| `stories/ui/UiGuideEditStylesSettingTour.stories.ts` | `IntroTab` / `IntroTabLastStepDisplayed` を追加（`play` でイントロタブを開く） |
 
-- 対象: 管理画面「表示スタイル設定」→ イントロタブ →「チェックマーク」セクション右上のボタン
-  （`onboarding-manage-web/app/components/ui/UiGuideEditStylesSettingTour.vue:336-340`）
-- **現状の実装は背景色だけを既定値に戻す**（`:852-855`）:
+検証: 型検査 0 件 / `npm run test:run` 517 ファイル・7620 件緑 / Storybook 撮影で描画確認済み。
 
-  ```js
-  onClickDefaultIntroCheckmark() {
-    this.introCheckmarkColor = defaultStyles.intro.checkmark['background-color']
-  }
-  ```
+### 未着手
 
-- 同セクションにタイミングのラジオを追加した場合、
-  「デフォルトに戻す」が色だけを戻すのか、タイミングも `goal_started` に戻すのかが利用者から見て曖昧になる
-- 判断の観点: 他タブ（ランチャー / ステップ）の「デフォルトに戻す」もセクション単位で
-  そのセクションの全項目を戻す作りになっているため、**セクション内の全項目を戻す方が一貫する**。
-  ただしタイミングは見た目ではなく挙動の設定なので、色と同じ扱いにすると
-  意図せず挙動が戻る事故が起きうる（実装時にUIを見て決める）
+| 対象 | 内容 |
+|---|---|
+| `onboarding-manage-api` | 拡張機能用 `PUT tours/{id}/intro-style` の部分更新化（§6-3・必須）、`initial-data/tour/steps_preview.json` に既定値追加 |
+| `Onboarding-Editor-Extension` | インラインメニューへのタイミング選択追加（§6-2） |
+| `onboarding-web` | 判定分岐・最終ステップ記録・進行中のDOM更新（新側 §5-1〜5-3 / 旧側 §5-6） |

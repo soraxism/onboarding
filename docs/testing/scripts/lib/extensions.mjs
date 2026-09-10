@@ -48,7 +48,7 @@ export const VERSION_JSON_URL =
  * 実体が無い。そこで `headless: false` のまま `--headless=new` を渡して新ヘッドレスで起動する。
  * 画面にウィンドウは出ないので、通常の確認はこのままでよい。
  *
- * @param {{ credentials: {basicId: string, basicPw: string}, keys: string[], headed?: boolean, userDataDir?: string, recordVideoDir?: string }} options
+ * @param {{ credentials: {basicId: string, basicPw: string}, keys: string[], headed?: boolean, userDataDir?: string, recordVideoDir?: string, viewport?: {width: number, height: number} }} options
  */
 export async function launchWithExtensions({
   credentials,
@@ -56,6 +56,9 @@ export async function launchWithExtensions({
   headed = false,
   userDataDir = '',
   recordVideoDir,
+  // エディタ拡張のツリーパネルは画面下に長く伸びる。既定の高さだと操作対象が
+  // ビューポート外に出て click が通らないため、拡張機能の確認では縦を広く取る
+  viewport = { width: 1600, height: 1800 },
 }) {
   const targets = keys.map((key) => {
     const ext = EXTENSIONS[key]
@@ -80,7 +83,7 @@ export async function launchWithExtensions({
       `--load-extension=${paths}`,
     ],
     httpCredentials: { username: credentials.basicId, password: credentials.basicPw },
-    viewport: { width: 1440, height: 900 },
+    viewport,
     locale: 'ja-JP',
     ...(recordVideoDir ? { recordVideo: { dir: recordVideoDir } } : {}),
   })

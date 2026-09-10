@@ -101,7 +101,14 @@ export async function launchBrowser({ credentials, headless = true }) {
  * @param {ReturnType<typeof loadCredentials>['manage']} manage
  */
 export async function loginToManage(page, manage) {
-  await page.goto(new URL('/login', manage.url).href, { waitUntil: 'domcontentloaded' })
+  // 拡張機能ありのコンテキストでは、起動直後の navigation が content script と
+  // ぶつかって ERR_ABORTED になることがある。一度だけリトライする
+  try {
+    await page.goto(new URL('/login', manage.url).href, { waitUntil: 'domcontentloaded' })
+  } catch {
+    await page.waitForTimeout(2000)
+    await page.goto(new URL('/login', manage.url).href, { waitUntil: 'domcontentloaded' })
+  }
 
   // 入力欄は id で引く。メール欄は type="text" なので type セレクタでは拾えない
   const emailInput = page.locator('#email')
@@ -177,6 +184,24 @@ export async function openGuideList(page, product, manage) {
   await page.goto(new URL('/guides', manage.url).href, { waitUntil: 'domcontentloaded' })
   await page.waitForLoadState('networkidle')
   await switchToProduct(page, product)
+  await waitForGuideList(page)
+}
+
+/**
+ * ガイド一覧の読み込み完了を待つ。
+ *
+ * `networkidle` の後にも一覧の取得（`/v2/guides`）が走るため、待たずに数えると
+ * 「0 件」を掴む。件数表示が出るまで待つ。
+ *
+ * @param {import('playwright').Page} page
+ */
+export async function waitForGuideList(page, timeoutMs = 30000) {
+  await page.waitForFunction(
+    () => /^\d+ 件$/.test(document.body.innerText.match(/^\s*(\d+ 件)\s*$/m)?.[1] ?? ''),
+    undefined,
+    { timeout: timeoutMs }
+  ).catch(() => {})
+  await page.waitForTimeout(1500)
 }
 
 /**
@@ -217,13 +242,19 @@ export async function applyBasicAuthByHost(context, credentials) {
  * @param {{ index?: number, timeoutMs?: number }} [options] index はカードの位置（既定は先頭）
  * @returns {Promise<import('playwright').Page>} エディタが動いているタブ
  */
-export async function openEditorOnSite(page, context, { index = 0, timeoutMs = 60000 } = {}) {
-  const card = page.locator('[class*="cardItem"], [class*="CardItem"]').nth(index)
+export async function openEditorOnSite(page, context, { name, type, index = 0, timeoutMs = 60000 } = {}) {
+  const card = findGuideCard(page, { name, type, index })
   await card.waitFor({ state: 'visible', timeout: 20000 })
+  await card.scrollIntoViewIfNeeded()
   await card.click({ button: 'right' })
 
-  // メニュー行はアイコンのリガチャ文字を含むため、テキストの完全一致では拾えない
-  const row = page.locator('.listRow').filter({ hasText: 'サイト上で編集' }).first()
+  // メニュー行はアイコンのリガチャ文字を含むため、テキストの完全一致では拾えない。
+  // 一覧には非表示のメニューが各カード分あるので、見えているものを選ぶ
+  const row = page
+    .locator('.listRow')
+    .filter({ hasText: 'サイト上で編集' })
+    .locator('visible=true')
+    .first()
   await row.waitFor({ state: 'visible', timeout: 10000 })
 
   const opened = context.waitForEvent('page', { timeout: timeoutMs })
@@ -231,6 +262,23 @@ export async function openEditorOnSite(page, context, { index = 0, timeoutMs = 6
   const editorPage = await opened
   await editorPage.waitForLoadState('load').catch(() => {})
   return editorPage
+}
+
+/**
+ * ガイド一覧のカードを 1 枚返す。
+ *
+ * `.cardItem` がカードのルート。`[class*="cardItem"]` では中の要素まで拾ってしまい、
+ * 右クリックしてもメニューが出ない。
+ *
+ * @param {import('playwright').Page} page
+ * @param {{ name?: string, index?: number }} [options] name を渡すとタイトルで絞る
+ */
+export function findGuideCard(page, { name, type, index = 0 } = {}) {
+  let cards = page.locator('.cardItem')
+  if (name) cards = cards.filter({ has: page.getByText(name, { exact: true }) })
+  // 同じ名前のガイドが種別違いで並ぶため、種別（ツアー / ポップアップ / ヒント）でも絞れるようにする
+  if (type) cards = cards.filter({ hasText: type })
+  return cards.nth(index)
 }
 
 /** スクリーンショットを撮って保存先を返す */

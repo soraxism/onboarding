@@ -163,6 +163,9 @@ GitHub Actions で自動同期される。同期ワークフローがないリ�
 
 ## ドキュメントの残し方
 
+置き場所と命名の詳細は [docs/README.md](docs/README.md) にある。
+dev 環境での動作確認を行うときは [docs/testing/README.md](docs/testing/README.md) を読むこと。
+
 ### 適用範囲の判定
 
 | 作業の範囲 | ドキュメントの置き場所 |

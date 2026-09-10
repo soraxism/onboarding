@@ -12,5 +12,8 @@
 docs/**/credentials.local.md
 docs/**/*.local.md
 
+# 動作確認の実行成果物（スクリーンショット等）
+docs/testing/artifacts/
+
 # macOS
 .DS_Store

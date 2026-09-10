@@ -30,8 +30,10 @@ node docs/testing/scripts/check-access.mjs
 | [credentials.sample.md](./credentials.sample.md) | 認証情報の雛形 | 追跡 |
 | `credentials.local.md` | 認証情報の実体 | **追跡外** |
 | `scripts/lib/env.mjs` | playwright の解決・認証情報の読み込み・成果物ディレクトリ | 追跡 |
-| `scripts/lib/manage.mjs` | プロダクト定義・ブラウザ起動・管理画面ログイン・ツアー名の生成 | 追跡 |
-| `scripts/check-access.mjs` | 疎通確認 | 追跡 |
+| `scripts/lib/manage.mjs` | プロダクト定義・ブラウザ起動・ログイン・プロダクト切替・エディタ起動 | 追跡 |
+| `scripts/lib/extensions.mjs` | 拡張機能の読み込み・service worker の取得・宛先 ID の差し替え | 追跡 |
+| `scripts/check-access.mjs` | 疎通確認（管理画面・デモサイト） | 追跡 |
+| `scripts/check-extensions.mjs` | 疎通確認（拡張機能） | 追跡 |
 | `artifacts/` | スクリーンショット等の実行成果物 | **追跡外** |
 
 ## 検証用プロダクト
@@ -49,7 +51,26 @@ node docs/testing/scripts/check-access.mjs
 - 検証で作ったツアーは `[自動検証] ` で始まる名前にし、**確認が終わったら削除する**（dev 環境は他の人も使う）
 - 操作してよいのは検証用プロダクト（247 / 248）の中だけ
 
+## 拡張機能
+
+エディタ・プレビュー・ビューワーの 3 拡張とも Playwright で読み込んで確認できる。
+**ソースではなくビルド成果物を読み込む**ので、確認前にビルドしておくこと。
+
+| 拡張機能 | ビルド | 成果物 |
+|---|---|---|
+| プレビュー | `onboarding-web` で `npm run build_preview:dev` | `build/dev/ext-preview` |
+| ビューワー | `onboarding-web` で `npm run build_viewer:dev` | `build/dev/ext-viewer-general` |
+| エディタ | `Onboarding-Editor-Extension` で `npm run build:ext_dev` | `package/` |
+
+```bash
+node docs/testing/scripts/check-extensions.mjs
+```
+
+`8/8 件 OK` が出れば、管理画面「サイト上で編集」からエディタが起動するところまで通っている。
+詳細は [manual-test-runbook.md](./manual-test-runbook.md) の「拡張機能の確認」を読む。
+
 ## できないこと
 
-エディター拡張機能・プレビュー拡張・ビューワー拡張の確認は、拡張機能のインストールが要るためエージェントには行えない。
-これらはチェックリスト側に「人が実施」と明記して切り分ける。
+- **ブラウザの対話的な操作**。すべてスクリプト経由になる
+- **Chrome ウェブストア版の拡張機能での確認**。ローカルビルドを unpacked で読み込むため、
+  ストア配布物そのものの確認（インストール導線・自動更新）は人が実施する

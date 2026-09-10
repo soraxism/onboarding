@@ -46,6 +46,33 @@ export function isGeneratedTourName(name) {
 }
 
 /**
+ * 管理画面自身で動いている Onboarding のガイドを止める。
+ *
+ * dev の管理画面には本番の埋め込みタグが入っており、ツアーが自動再生されると
+ * ハイライト用のオーバーレイ（`.g-shape`）が画面を覆ってクリックを遮る。
+ * 配信スクリプトの取得を落として、ガイドそのものを起動させない。
+ *
+ * 落とすのは管理画面から出たリクエストだけに限る。デモサイトも同じ配信APIを
+ * 叩いているため、URL だけで判定すると検証対象のガイドまで止まってしまう。
+ *
+ * ページを開く前に呼ぶこと。
+ *
+ * @param {import('playwright').BrowserContext} context
+ */
+export async function blockSelfGuides(context) {
+  const manageHost = 'dev-manage.onboarding-app.io'
+  await context.route(/onboarding-init/, (route) => {
+    let from = ''
+    try {
+      from = route.request().frame()?.url() ?? ''
+    } catch {
+      // service worker 等、frame を持たないリクエストは対象外
+    }
+    return from.includes(manageHost) ? route.abort() : route.continue()
+  })
+}
+
+/**
  * ブラウザを起動する。
  *
  * BASIC 認証は httpCredentials で通す（管理画面・デモサイトで ID/PW が異なるため、
@@ -104,17 +131,106 @@ export function isLoggedIn(page) {
 }
 
 /**
- * 指定プロダクトのガイド一覧を開く。
+ * ヘッダーのテナント切替で、検証用アカウントの指定プロダクトへ切り替える。
+ *
+ * `/guides?product_id=248` のようなクエリでは切り替わらない（アプリが保持している
+ * 現在のプロダクトが優先され、URL からクエリが落ちる）。ヘッダーの切替を操作する。
  *
  * @param {import('playwright').Page} page
  * @param {typeof PRODUCTS.legacy} product
  */
-export async function openGuideList(page, product) {
-  const base = new URL('/guides', PRODUCTS.baseUrl ?? page.url()).origin
-  await page.goto(`${base}/guides?product_id=${product.productId}`, {
-    waitUntil: 'domcontentloaded',
-  })
+export async function switchToProduct(page, product) {
+  const currentName = page.locator('.headerTenants__mainName')
+  await currentName.waitFor({ state: 'visible', timeout: 20000 })
+  if ((await currentName.innerText()).trim() === product.label) return
+
+  await page.locator('.headerTenants__toggle').click()
+
+  // プロダクト名だけでは他アカウントと衝突しうるので、アカウントのまとまりの中から選ぶ
+  const accountBlock = page
+    .locator('.headerTenants__dropdown > div')
+    .filter({
+      has: page.locator('.headerTenants__dropdown__accountName', { hasText: ACCOUNT_NAME }),
+    })
+  await accountBlock
+    .locator('.headerTenants__dropdown__productName')
+    .getByText(product.label, { exact: true })
+    .click()
+
+  await page.waitForFunction(
+    (name) =>
+      document.querySelector('.headerTenants__mainName')?.textContent?.trim() === name,
+    product.label,
+    { timeout: 30000 }
+  )
   await page.waitForLoadState('networkidle')
+}
+
+/**
+ * 指定プロダクトのガイド一覧を開く。
+ *
+ * @param {import('playwright').Page} page
+ * @param {typeof PRODUCTS.legacy} product
+ * @param {{url: string}} manage credentials.local.md の管理画面情報
+ */
+export async function openGuideList(page, product, manage) {
+  await page.goto(new URL('/guides', manage.url).href, { waitUntil: 'domcontentloaded' })
+  await page.waitForLoadState('networkidle')
+  await switchToProduct(page, product)
+}
+
+/**
+ * host ごとに BASIC 認証ヘッダを付ける。
+ *
+ * `httpCredentials` はコンテキストに 1 組しか持てない。管理画面とデモサイトで
+ * ID/PW が違うため、両方を 1 つのブラウザで開く確認（エディタ起動など）では
+ * こちらを使ってリクエストごとに付け分ける。
+ *
+ * @param {import('playwright').BrowserContext} context
+ * @param {ReturnType<import('./env.mjs').loadCredentials>} credentials
+ */
+export async function applyBasicAuthByHost(context, credentials) {
+  const header = (cred) =>
+    'Basic ' + Buffer.from(`${cred.basicId}:${cred.basicPw}`).toString('base64')
+
+  await context.route('**/*', (route) => {
+    const host = new URL(route.request().url()).host
+    const cred = host.includes('dev-manage.onboarding-app.io')
+      ? credentials.manage
+      : host.includes('dev.onboarding.co.jp')
+        ? credentials.demo
+        : null
+    if (!cred) return route.continue()
+    return route.continue({
+      headers: { ...route.request().headers(), Authorization: header(cred) },
+    })
+  })
+}
+
+/**
+ * ガイド一覧のカードから「サイト上で編集」を選び、エディタが開いたタブを返す。
+ *
+ * エディタ拡張を読み込み、`routeManageMessagesTo` で宛先 ID を差し替えてあること。
+ *
+ * @param {import('playwright').Page} page ガイド一覧を開いている管理画面のページ
+ * @param {import('playwright').BrowserContext} context
+ * @param {{ index?: number, timeoutMs?: number }} [options] index はカードの位置（既定は先頭）
+ * @returns {Promise<import('playwright').Page>} エディタが動いているタブ
+ */
+export async function openEditorOnSite(page, context, { index = 0, timeoutMs = 60000 } = {}) {
+  const card = page.locator('[class*="cardItem"], [class*="CardItem"]').nth(index)
+  await card.waitFor({ state: 'visible', timeout: 20000 })
+  await card.click({ button: 'right' })
+
+  // メニュー行はアイコンのリガチャ文字を含むため、テキストの完全一致では拾えない
+  const row = page.locator('.listRow').filter({ hasText: 'サイト上で編集' }).first()
+  await row.waitFor({ state: 'visible', timeout: 10000 })
+
+  const opened = context.waitForEvent('page', { timeout: timeoutMs })
+  await row.click()
+  const editorPage = await opened
+  await editorPage.waitForLoadState('load').catch(() => {})
+  return editorPage
 }
 
 /** スクリーンショットを撮って保存先を返す */

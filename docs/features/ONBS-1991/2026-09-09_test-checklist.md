@@ -13,6 +13,19 @@
 | 検証ツアー | **ステップが 3 つ以上あるゴールを 2 つ以上**持つツアー（片方は 1 ステップのみのゴールも用意すると境界が見られる） |
 | 追加で用意 | ゴール連結を設定したゴール、ステップ分岐を設定したゴール（§5 で使用） |
 | ブラウザ | Chrome（拡張機能の検証があるため） |
+| 実施方法 | 管理画面・エンドユーザー側・拡張機能とも Claude Code に任せられる。手順は [docs/testing/](../../testing/README.md) |
+
+**拡張機能を確認する前にビルドすること。** 読み込むのはソースではなくビルド成果物なので、
+古いビルドのまま確認すると誤判定する。§2 の前に次を通しておく。
+
+```bash
+# エディタ拡張
+cd Onboarding-Editor-Extension && NODE_ENV=dev npx vite build --mode dev
+# プレビュー / ビューワー拡張
+cd onboarding-web && npx webpack --config webpack.dev.js && npx webpack --config webpack.dev.js --env product=general
+# 疎通確認（8/8 件 OK になること）
+cd onboarding && node docs/testing/scripts/check-extensions.mjs
+```
 
 **LocalStorage の確認方法**: DevTools → Application → Local Storage。関係するキーは次の 4 つ。
 

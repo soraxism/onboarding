@@ -13,11 +13,9 @@ Claude Code（以下「エージェント」）が dev 環境で動作確認を�
 | 管理画面の操作（ログイン・設定変更・保存・公開） | ○ | Playwright スクリプトで自動操作する |
 | エンドユーザー側デモサイトでのツアー実行 | ○ | 同上。LocalStorage の読み書きも `page.evaluate` で行える |
 | 画面の見た目の確認 | ○ | スクリーンショットを撮って画像として読む |
+| エディタ・プレビュー・ビューワー拡張の確認 | ○ | ローカルビルドを読み込んで起動する。「拡張機能の確認」を参照 |
 | **ブラウザの対話的な操作** | **×** | ブラウザを直接操作する手段（Playwright MCP 等）は持たない。**すべてスクリプト経由**になる |
-| **エディター拡張機能の確認** | **×** | 拡張機能のインストールと複雑な起動手順が要る。人が実施する |
-| **プレビュー拡張・ビューワー拡張の確認** | **×** | 同上 |
-
-拡張機能が絡む項目は、チェックリスト側に「人が実施」と明記して切り分けること。
+| **ストア配布版の拡張機能での確認** | **×** | 読み込むのはローカルビルド。インストール導線と自動更新は人が実施する |
 
 ## 環境
 
@@ -83,8 +81,68 @@ node docs/testing/scripts/check-access.mjs
 - **BASIC認証は `httpCredentials` で通す**。管理画面とデモサイトで ID/PW が違うので、`launchBrowser` にどちらを渡すか間違えないこと
 - **デモサイトで `networkidle` を待たない**。ガイドの通信が続くためタイムアウトする。`waitUntil: 'load'` としたうえで、`STANDSUnit` の生成を `waitForFunction` で待つ
 - **管理画面のログインフォームは `#email` / `#password`**。メール欄は `type="text"` なので `input[type="email"]` では拾えない。送信ボタンは入力検証が通るまで `disabled`
+- **プロダクトは URL では切り替わらない**。`/guides?product_id=248` はクエリごと落ちる。
+  ヘッダーの切替（`switchToProduct`）を使う
+- **管理画面自身のガイドを止める**。dev の管理画面には本番の埋め込みタグが入っていて、
+  ツアーが再生されるとオーバーレイ（`.g-shape`）がクリックを遮る。`blockSelfGuides` を呼ぶ
+- **メニュー項目はテキストの完全一致で拾えない**。Material アイコンのリガチャ文字が
+  同じ要素に入るため（`edit_squareサイト上で編集`）。`.listRow` を `hasText` で絞る
 
 スクリーンショットは `docs/testing/artifacts/{実行日時}_{名前}/` に出る（git 追跡外）。
+
+## 拡張機能の確認
+
+### ビルドしてから確認する
+
+読み込むのは**ソースではなくビルド成果物**。確認したい変更がビルドに入っていないと、
+古い挙動を見て「直っていない」と誤判定する。
+
+| 拡張機能 | ビルド | 成果物 |
+|---|---|---|
+| プレビュー | `onboarding-web` で `npm run build_preview:dev` | `build/dev/ext-preview` |
+| ビューワー | `onboarding-web` で `npm run build_viewer:dev` | `build/dev/ext-viewer-general` |
+| エディタ | `Onboarding-Editor-Extension` で `npm run build:ext_dev` | `package/` |
+
+`npm run ...` は先頭で `npm ci` を回す。依存を入れ直したくないときは webpack / vite を直接叩く。
+
+```bash
+# プレビュー / ビューワー（onboarding-web）
+npx webpack --config webpack.dev.js
+npx webpack --config webpack.dev.js --env product=general
+
+# エディタ（Onboarding-Editor-Extension）
+NODE_ENV=dev npx vite build --mode dev
+```
+
+ビルドしたら疎通確認する。
+
+```bash
+node docs/testing/scripts/check-extensions.mjs
+```
+
+### 仕組みと注意
+
+- **新ヘッドレスで起動する**。Manifest V3 の拡張機能は旧ヘッドレスでは読み込まれない
+  （service worker が登録されない）。`headless: false` のまま `--headless=new` を渡している。
+  画面にウィンドウは出ないので、通常はそのままでよい
+- **service worker は暖機してから使う**。登録直後は `sw.evaluate` の中で `chrome` が
+  未定義になることがある。`waitForExtensionWorker` が使えるまで待つ
+- **拡張機能 ID は毎回変わる**。unpacked で読み込むためストア版の固定 ID にならない。
+  管理画面は固定 ID 宛にメッセージを送るので、`routeManageMessagesTo` で
+  `chrome.runtime.sendMessage` の宛先だけを差し替える。パラメータの組み立て
+  （operation_token の取得など）は本来の経路のまま通る
+- **バージョンが古いと管理画面が止める**。[version.json](https://onboarding-chrome-extension.s3.ap-northeast-1.amazonaws.com/version.json)
+  の `dev` を下回るビルドは更新を要求されて起動しない。`check-extensions.mjs` が判定する
+- **BASIC 認証は host ごとに付ける**。管理画面とデモサイトで ID/PW が違い、
+  `httpCredentials` はコンテキストに 1 組しか持てない。`applyBasicAuthByHost` を使う
+- **ツールバーのアイコンは押せない**。Playwright から拡張機能のアイコンはクリックできないので、
+  同じメッセージを service worker から送る（`openEditorFromToolbar`）
+
+### エディタを起動する
+
+管理画面のガイド一覧でカードを右クリック →「サイト上で編集」で、対象サイト上にエディタが開く。
+`openEditorOnSite(page, context)` がこの操作をして、エディタのタブを返す。
+起動できたかは画面下部の編集バー（「公開設定をする」）で判定する。
 
 ## 検証用ツアーの扱い
 

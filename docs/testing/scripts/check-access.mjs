@@ -9,7 +9,15 @@
  *   node docs/testing/scripts/check-access.mjs --headed   # ブラウザを表示する
  */
 import { loadCredentials, prepareArtifactDir } from './lib/env.mjs'
-import { PRODUCTS, launchBrowser, loginToManage, isLoggedIn, shoot } from './lib/manage.mjs'
+import {
+  PRODUCTS,
+  launchBrowser,
+  loginToManage,
+  isLoggedIn,
+  blockSelfGuides,
+  openGuideList,
+  shoot,
+} from './lib/manage.mjs'
 
 const headed = process.argv.includes('--headed')
 
@@ -30,6 +38,8 @@ const main = async () => {
       credentials: credentials.manage,
       headless: !headed,
     })
+    // 管理画面自身のガイドがオーバーレイでクリックを遮るため止める
+    await blockSelfGuides(context)
     const page = await context.newPage()
     try {
       await loginToManage(page, credentials.manage)
@@ -38,16 +48,21 @@ const main = async () => {
       await shoot(page, dir, '01_manage-after-login')
 
       for (const product of Object.values(PRODUCTS)) {
-        const origin = new URL(credentials.manage.url).origin
-        await page.goto(`${origin}/guides?product_id=${product.productId}`, {
-          waitUntil: 'domcontentloaded',
-        })
-        await page.waitForLoadState('networkidle')
-        const onGuides = page.url().includes('/guides')
+        let switched = false
+        try {
+          await openGuideList(page, product, credentials.manage)
+          // ヘッダーの表示が切り替わって初めて「そのプロダクトを見ている」と言える
+          switched =
+            (await page.locator('.headerTenants__mainName').innerText()).trim() ===
+            product.label
+        } catch (e) {
+          record(`ガイド一覧（${product.label}）`, false, e.message.split('\n')[0])
+          continue
+        }
         record(
-          `ガイド一覧 product_id=${product.productId}（${product.label}）`,
-          onGuides,
-          onGuides ? '' : `遷移先: ${page.url()}`
+          `ガイド一覧（${product.label} / product_id=${product.productId}）`,
+          switched,
+          switched ? '' : 'プロダクトが切り替わらない'
         )
         await shoot(page, dir, `02_guides-${product.key}`)
       }

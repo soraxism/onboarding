@@ -20,6 +20,17 @@ export const NEXT_TOUR = {
   goal1: '6ad979882198c861a263e38223689c40',
 }
 
+/**
+ * legacy（旧JS / product_id=247）側の検証ツアー
+ * [自動検証] ONBS-1991_20260910_チェックマーク（管理画面の tour id = 1448）
+ */
+export const LEGACY_TOUR = {
+  manageTourId: 1448,
+  tourId: 'a832c86bd96b003eef2cbe6b87891628',
+  goal3: '3ad10d8405048791a6ed5fe7bfe28dbb',
+  goal1: '77531bc530badba80397a3617a3a6dfc',
+}
+
 export const LS_KEYS = (tourId) => ({
   display: `onb_display_goals_${tourId}`,
   lastStep: `onb_last_step_displayed_goals_${tourId}`,
@@ -28,11 +39,33 @@ export const LS_KEYS = (tourId) => ({
   progress: `iGuider_data-${tourId}`,
 })
 
-/** 対象ツアーの LS キーを消して未着手状態を作る */
+/**
+ * 対象ツアーの LS キーを消して未着手状態を作る。
+ *
+ * ONBS-1969 のクリア耐性（sync iframe が写しを持ち、消すと復元する）があるため、
+ * メインの localStorage だけでなく sync iframe 側の写しも消す。
+ */
 export async function clearTourStorage(page, tourId) {
-  await page.evaluate((keys) => {
-    for (const k of Object.values(keys)) localStorage.removeItem(k)
-  }, LS_KEYS(tourId))
+  const keys = Object.values(LS_KEYS(tourId))
+  await page.evaluate((ks) => {
+    for (const k of ks) localStorage.removeItem(k)
+  }, keys)
+  for (const frame of page.frames()) {
+    if (!frame.url().includes('/sync/sync.html')) continue
+    await frame
+      .evaluate((ks) => {
+        const hit = Object.keys(localStorage).filter((k) => ks.some((t) => k.includes(t) || k === t))
+        for (const k of hit) localStorage.removeItem(k)
+        // キー名が加工されている場合に備え、tourId を含むものも消す
+        return hit.length
+      }, keys)
+      .catch(() => {})
+    await frame
+      .evaluate((tourId) => {
+        for (const k of Object.keys(localStorage)) if (k.includes(tourId)) localStorage.removeItem(k)
+      }, tourId)
+      .catch(() => {})
+  }
 }
 
 /** LS の状態を読む（JSON はパースして返す） */
@@ -72,10 +105,19 @@ export async function readBadgeCount(page) {
 export const intro = (page) =>
   page.locator('.g-modal-pos > .g-modal-size', { has: page.locator('#stands_gGoals:visible') })
 
-/** ランチャーを押してイントロを開く */
+/** ランチャーを押してイントロを開く（既に開いていればそのまま） */
 export async function openIntro(page) {
+  if (await intro(page).isVisible().catch(() => false)) return
   await launcher(page).click({ force: true })
   await intro(page).waitFor({ state: 'visible', timeout: 15000 })
+  await page.waitForTimeout(800)
+}
+
+/** イントロを閉じる（開いていなければ何もしない） */
+export async function closeIntro(page) {
+  const i = intro(page)
+  if (!(await i.isVisible().catch(() => false))) return
+  await i.locator('.g-modal-close').first().click({ force: true })
   await page.waitForTimeout(800)
 }
 

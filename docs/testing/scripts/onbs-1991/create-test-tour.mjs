@@ -15,6 +15,11 @@ import { buildTourName } from '../lib/manage.mjs'
 
 const EDITOR_API = 'https://dev-editor-api.onboarding-app.io'
 
+const existingTourId = process.argv.find((a) => a.startsWith('--tour='))?.split('=')[1]
+const productKey = process.argv.find((a) => a.startsWith('--product='))?.split('=')[1] ?? 'next'
+const product = PRODUCTS[productKey]
+if (!product) throw new Error(`未知のプロダクト: ${productKey}`)
+
 const c = loadCredentials()
 const dir = prepareArtifactDir('create-test-tour')
 console.log('成果物:', dir)
@@ -22,9 +27,8 @@ const { browser, context } = await launchBrowser({ credentials: c.manage, headle
 await blockSelfGuides(context)
 const page = await context.newPage()
 await loginToManage(page, c.manage)
-await openGuideList(page, PRODUCTS.next, c.manage)
+await openGuideList(page, product, c.manage)
 
-const existingTourId = process.argv.find((a) => a.startsWith('--tour='))?.split('=')[1]
 const name = buildTourName('ONBS-1991', 'チェックマーク')
 console.log('ツアー名:', name)
 
@@ -61,7 +65,7 @@ const visibleInputs = page.locator('input:visible')
 await visibleInputs.first().waitFor({ state: 'visible', timeout: 15000 })
 await visibleInputs.nth(0).fill(name)
 const urlInput = page.locator('input[placeholder*="https"]:visible').first()
-await urlInput.fill(PRODUCTS.next.demoUrl)
+await urlInput.fill(product.demoUrl)
 await shoot(page, dir, '03_filled')
 
 const createdRes = page.waitForResponse((r) => r.request().method() === 'POST' && /\/tours?(\?|$)/.test(r.url()), { timeout: 30000 })
@@ -78,7 +82,7 @@ console.log('作成された tour id:', tourId, '/ 現在URL:', page.url())
 
 // ===== 3. operation_token を取得（管理画面のセッションで PUT /operation-token） =====
 // 管理画面は Cookie でなく localStorage の api_token を X-Onboarding-API-Token で送る
-const token = await page.evaluate(async () => {
+const token = await page.evaluate(async (productId) => {
   const res = await fetch('https://dev-manage-api.onboarding-app.io/v1/operation-token', {
     method: 'PUT',
     headers: {
@@ -86,11 +90,11 @@ const token = await page.evaluate(async () => {
       'X-Onboarding-API-Token': localStorage.getItem('api_token') ?? '',
     },
     // product_id が必須（このトークンで操作できるプロダクトが決まる）
-    body: JSON.stringify({ product_id: 248, operation_token: '' }),
+    body: JSON.stringify({ product_id: productId, operation_token: '' }),
   })
   const json = await res.json()
   return json.operation_token
-})
+}, product.productId)
 if (!token) throw new Error('operation_token が取れない')
 console.log('operation_token: 取得できた（値は出さない）')
 

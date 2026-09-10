@@ -74,3 +74,6 @@ node docs/testing/scripts/check-extensions.mjs
 - **ブラウザの対話的な操作**。すべてスクリプト経由になる
 - **Chrome ウェブストア版の拡張機能での確認**。ローカルビルドを unpacked で読み込むため、
   ストア配布物そのものの確認（インストール導線・自動更新）は人が実施する
+- **プレビュー拡張・ビューワー拡張でのツアー実行**。読み込みはできるが起動まで通らない
+  （[manual-test-runbook.md](./manual-test-runbook.md) の「拡張機能の確認」参照）。
+  エディタ拡張は起動・操作できる

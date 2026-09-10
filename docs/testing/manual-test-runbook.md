@@ -169,6 +169,23 @@ node docs/testing/scripts/check-extensions.mjs
 - **ツールバーのアイコンは押せない**。Playwright から拡張機能のアイコンはクリックできないので、
   同じメッセージを service worker から送る（`openEditorFromToolbar`）
 
+### 拡張機能ごとの到達点
+
+| 拡張機能 | 読み込み | 起動して操作 |
+|---|---|---|
+| エディタ | ○ | ○（管理画面の「サイト上で編集」から。`openEditorOnSite`） |
+| プレビュー | ○ | **×** |
+| ビューワー | ○ | **×** |
+
+プレビューは content script が `chrome.storage` / background に到達できず
+（`Could not establish connection. Receiving end does not exist.`）、起動要求の postMessage に
+応答が返らない。永続プロファイル・service worker の暖機・実 operation_token の付与を試しても変わらない。
+ビューワーはガイドが配信されるものの、同じページの埋め込みタグ経由と切り分けられず
+ランチャーも出ない。**この 2 つでのツアー実行は人が実施する。**
+
+判定を誤らないよう、プレビューでは `STANDSUnit.isExtensionPreview` が `true` であることを
+必ず確認する。これを見ないと、埋め込みタグ経由で動いているものをプレビューだと誤認する。
+
 ### エディタを起動する
 
 管理画面のガイド一覧でカードを右クリック →「サイト上で編集」で、対象サイト上にエディタが開く。

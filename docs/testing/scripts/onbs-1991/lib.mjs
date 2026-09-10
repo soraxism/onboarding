@@ -87,3 +87,40 @@ export async function saveStyles(page) {
 }
 
 export { shoot }
+
+/**
+ * ツアー編集画面の「変更内容を公開する」を押して公開する。
+ *
+ * 公開しないと steps_preview.json 止まりで、デモサイト（steps.json）に設定が届かない。
+ *
+ * @param {import('playwright').Page} page ツアー編集画面を開いているページ
+ */
+export async function publishTour(page) {
+  // ヘッダーの公開ボタン。下書きは「公開する」(publishBtn__base)、
+  // 公開済みで差分ありは「変更内容を公開する」(publishBtn__b)
+  await page.locator('.publishBtn__base, .publishBtn__b').first().click()
+  // 「公開設定」ダイアログの「公開する / 再公開する」を押して確定する。
+  // ヘッダーの公開ボタンと同名のため、モーダルの中にスコープして引く
+  const modal = page.locator('.c-modal', { has: page.getByText('公開設定', { exact: true }) })
+  const confirm = modal.getByRole('button', { name: /^(再)?公開する$/ }).first()
+  await confirm.waitFor({ state: 'visible', timeout: 15000 })
+  await confirm.click()
+  // 再公開時は「ツアーを公開しますがよろしいですか？」の確認が出る（初回公開では出ない）
+  const ok = page.getByRole('button', { name: /^OK$/ }).first()
+  if (await ok.waitFor({ state: 'visible', timeout: 8000 }).then(() => true).catch(() => false)) {
+    await ok.click()
+    await ok.waitFor({ state: 'hidden', timeout: 60000 }).catch(() => {})
+  }
+  // 公開は S3 反映を含む重い処理。ダイアログが消えるまで待つ（スピナー中に閉じない）
+  await page
+    .getByText('公開設定', { exact: true })
+    .first()
+    .waitFor({ state: 'hidden', timeout: 120000 })
+  // 未公開バナーが消えたことも確認する
+  await page
+    .getByText('変更内容が公開されたガイドに反映されていません')
+    .first()
+    .waitFor({ state: 'hidden', timeout: 30000 })
+    .catch(() => {})
+  await page.waitForTimeout(3000)
+}

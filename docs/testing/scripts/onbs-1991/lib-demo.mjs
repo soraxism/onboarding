@@ -44,8 +44,22 @@ export const LS_KEYS = (tourId) => ({
  *
  * ONBS-1969 のクリア耐性（sync iframe が写しを持ち、消すと復元する）があるため、
  * メインの localStorage だけでなく sync iframe 側の写しも消す。
+ *
+ * NOTE: 逆に「値を書いてリロード」はできない。初期化時の overwriteLocalStorage() が
+ * sync 側の写しで上書きするため、書いた値は消える。状態は実操作で作ること。
+ * dev 配信には `STANDSTest.flushSyncStorage()` があり、そちらの方が確実なので優先して使う。
  */
 export async function clearTourStorage(page, tourId) {
+  // dev/local 配信が公開しているテスト用APIがあればそれを使う（両側を確実に消す）
+  const flushed = await page
+    .evaluate(async () => {
+      if (!window.STANDSTest?.flushSyncStorage) return false
+      await window.STANDSTest.flushSyncStorage()
+      return true
+    })
+    .catch(() => false)
+  if (flushed) return
+
   const keys = Object.values(LS_KEYS(tourId))
   await page.evaluate((ks) => {
     for (const k of ks) localStorage.removeItem(k)

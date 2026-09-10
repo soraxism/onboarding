@@ -80,13 +80,52 @@ feature / hotfixes ブランチ
 - PR先は必ず `release`（`release` がないリポジトリのみ main / master）
 - マージ方式は **squash merge**
 - **CodeRabbit の自動レビューは走らない**（base が `release` のPRでは無効化されている）。
-  レビューを受けたい場合はPR作成直後に明示的にトリガーする。以降の push には自動で再レビューが走る
+  レビューを受けたいときは明示的にトリガーする
 
 ```bash
 gh pr comment {PR番号} --body "@coderabbitai review"
 ```
 
 レビュー開始までは3〜4分程度かかる。監視と指摘対応は `stands-babysit-coderabbit` スキルに任せてよい。
+
+#### push ごとにトリガーが必要
+
+**指摘に対応して push しても再レビューは自動で走らない。** 新しいコミットの
+commit status に `Review skipped: reviews are disabled for this base branch` が付く。
+push のたびに `@coderabbitai review` を打つこと。
+
+#### レート制限は 5 レビュー/時
+
+トリガーが `⚠️ Action not completed / Review rate limited.` で拒否されることがある。
+1時間あたり5レビューまでで、**複数リポジトリを同時にPRすると初回で枠を使い切る**
+（5リポジトリ同時なら、その1時間は再レビューを1件も受けられない）。
+
+- レビュー枠の消費時刻は bot のコメント時刻で追える。そこから1時間で復活する
+- 拒否されたトリガーは枠を消費しない
+- **成否は commit status の description で判定する。** `success` だけでは足りない。
+  `Review completed` なら実施済み、`Review rate limited` / `Review skipped: ...` は未実施
+
+```bash
+gh api repos/stands/{repo}/commits/{sha}/status \
+  --jq '.statuses[] | select(.context=="CodeRabbit") | "\(.state) :: \(.description)"'
+```
+
+複数リポジトリにまたがる対応では、**指摘の修正をリポジトリごとに小分けで push せず、
+1リポジトリ1コミットにまとめてから再レビューを打つ**と枠を無駄にしない。
+
+#### インラインに出ない指摘がある
+
+差分の外を指す指摘は、レビュー本文の
+`⚠️ Outside diff range comments` にしか出ず、**インラインコメントとして投稿されない**。
+`stands-babysit-coderabbit` の `fetch_comments.sh` はインラインのスレッドだけを見るため
+この分を取りこぼす。レビュー本文も必ず確認すること。
+
+```bash
+gh api repos/stands/{repo}/pulls/{PR番号}/reviews \
+  --jq '.[] | select(.user.login=="coderabbitai[bot]") | .body' | grep -c 'Outside diff'
+```
+
+返信先のスレッドが無いため、この指摘への返信はPRコメントで行う。
 
 ### 2. release → main / master へのPR（リリース）
 

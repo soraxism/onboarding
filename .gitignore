@@ -7,5 +7,10 @@
 !/CLAUDE.md
 !/docs/
 
+# 認証情報（テスト環境のBASIC認証・ログイン情報など）は追跡しない。
+# 手順書からはこのファイルを参照する形にし、値そのものはリモートへ載せない
+docs/**/credentials.local.md
+docs/**/*.local.md
+
 # macOS
 .DS_Store

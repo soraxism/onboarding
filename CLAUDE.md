@@ -159,22 +159,22 @@ GitHub Actions で自動同期される。同期ワークフローがないリ�
 ### 7. 複数リポジトリの同時リリース
 
 - 依存関係を踏まえたリリース順序を決め、**実装者に提示して確認を取ってから**リリースを開始する（例: API → Batch → Web）
-- 決定した順序は `docs/{Jiraチケット番号}/{YYYY-MM-DD}_release-runbook.md` に残す
+- 決定した順序は `docs/features/{Jiraチケット番号}/{YYYY-MM-DD}_release-runbook.md` に残す
 
 ## ドキュメントの残し方
 
-置き場所と命名の詳細は [docs/README.md](docs/README.md) にある。
+置き場所と命名の詳細は [README.md](README.md) にある。
 dev 環境での動作確認を行うときは [docs/testing/README.md](docs/testing/README.md) を読むこと。
 
 ### 適用範囲の判定
 
 | 作業の範囲 | ドキュメントの置き場所 |
 | --- | --- |
-| **複数リポジトリにまたがる** | `docs/{Jiraチケット番号}/` （このディレクトリ直下） |
+| **複数リポジトリにまたがる** | `docs/features/{Jiraチケット番号}/` |
 | **単一リポジトリのみ** | そのリポジトリのドキュメントルールに従う（ここでは扱わない） |
 
 複数リポジトリにまたがる作業では、変更が個々のリポジトリに散らばって全体像が追えなくなるため、
-横断的な設計・仕様・テスト情報は必ず `docs/{Jiraチケット番号}/` に集約する。
+横断的な設計・仕様・テスト情報は必ず `docs/features/{Jiraチケット番号}/` に集約する。
 
 ### 残すドキュメント
 
@@ -193,7 +193,7 @@ dev 環境での動作確認を行うときは [docs/testing/README.md](docs/tes
 日付は**そのドキュメントを作成した日**。更新時は日付を変えず、内容を追記・修正する。
 
 ```
-docs/ONBS-1938/
+docs/features/ONBS-1938/
 ├── 2026-08-10_ai-abandonment-csv-logging-spec-changes.md  # 実装詳細
 ├── 2026-08-13_jira-summary.md                             # Jira起票用の概要
 ├── 2026-08-13_test-checklist.md                           # テスト項目書

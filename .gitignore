@@ -4,6 +4,7 @@
 
 # 管理対象のみ許可
 !/.gitignore
+!/README.md
 !/CLAUDE.md
 !/docs/
 

@@ -4,7 +4,7 @@ Claude Code（以下「エージェント」）が dev 環境で動作確認を�
 人が読んでも同じ操作を辿れるように書いてあるが、**主たる読者はエージェント**。
 
 - 認証情報: [credentials.local.md](./credentials.local.md)（git 追跡外。無ければ [credentials.sample.md](./credentials.sample.md) から作る）
-- チケットごとの確認項目: `docs/{Jiraチケット番号}/{日付}_test-checklist.md`
+- チケットごとの確認項目: `docs/features/{Jiraチケット番号}/{日付}_test-checklist.md`
 
 ## エージェントにできること・できないこと
 
@@ -111,7 +111,7 @@ node docs/testing/scripts/check-access.mjs
 
 ## 結果の残し方
 
-1. チェックリスト（`docs/{チケット番号}/{日付}_test-checklist.md`）の「結果」欄を埋める
+1. チェックリスト（`docs/features/{チケット番号}/{日付}_test-checklist.md`）の「結果」欄を埋める
 2. 判断の根拠になるスクリーンショットは `artifacts/` に残る。**追跡外なので、報告に必要なものは会話へ添付する**
 3. 想定と違った場合は、原因の切り分け（実装の問題か、環境・データの問題か）まで行ってから報告する
 

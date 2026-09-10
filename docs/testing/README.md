@@ -2,14 +2,17 @@
 
 Claude Code に dev 環境での動作確認を任せるための、環境情報・手順・スクリプト置き場。
 
-## 最初にすること
+## 初期設定（クローン直後に一度だけ）
+
+**`credentials.sample.md` をコピーして `credentials.local.md` を作る。** これが無いとスクリプトは動かない。
 
 ```bash
 cd /Users/soraxism/Dev/stands/onboarding
 
 # 1. 認証情報を用意する（git 追跡外のファイルが作られる）
 cp docs/testing/credentials.sample.md docs/testing/credentials.local.md
-#    → <> の箇所を埋める
+#    → <> の箇所（BASIC認証・ログイン情報）を埋める。値は環境の管理者に確認する
+#    → URL やプロダクトIDは雛形に記入済みなので触らなくてよい
 
 # 2. 疎通確認
 node docs/testing/scripts/check-access.mjs

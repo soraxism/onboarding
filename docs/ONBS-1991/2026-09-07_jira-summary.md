@@ -161,7 +161,10 @@
   `npm test` 3196件緑、型エラーはベースラインと同数、`npm run build_preview:e2e` 成功
 - **完了** 拡張機能のバージョン採番 — エディター拡張（dev 1.52.0 / prod 1.53.0）、
   onboarding-web のプレビュー拡張（dev 3.121.0 / prod 6.6.0）・ビューワー拡張（dev 1.58.0 / prod 3.6.0）
-- **未着手** `onboarding-e2e-test`（新設定のシナリオ追加）
+- **完了** `onboarding-e2e-test` — `goalCheckmarkTiming` シナリオを追加（設定値ごとの判定を確認）、
+  `goalCompleted` に新キーの記録確認を追加。新側ビルドで Intro グループ 16 件緑
+- **完了** コードレビュー（`/stands-code-review` 差分モード）— Critical 2 件 / Warning 13 件を修正済み。
+  レポート: `onboarding-web/docs/code-review/2026-09-10-1054-review.md`
 
 ## 手動テスト
 

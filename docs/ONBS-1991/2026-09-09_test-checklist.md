@@ -143,6 +143,24 @@
 
 ---
 
+## 自動テストで担保済みの範囲（手動確認は不要）
+
+| 内容 | 担保しているテスト |
+|---|---|
+| 設定の読み取り（未設定・未知の値は既定へ倒す） | `onboarding-web` ユニット `GoalRepository.test.ts` |
+| 最終ステップ表示の記録（境界・重複・壊れた値） | 同上 |
+| チェック判定の切り替え（既定 / 完了時 / 論理和） | `onboarding-web` ユニット `onboarding-init.test.ts` + `onboarding-e2e-test` の `goalCheckmarkTiming` |
+| 削除済みゴールIDの掃除 / 壊れた値でランチャーが出ること | `onboarding-web` ユニット `onboarding-init.test.ts` |
+| 既定設定で DOM 操作が走らないこと | `onboarding-web` ユニット `stands.onbd.test.ts` |
+| 記録が失敗しても表示トラッキングが落ちないこと | 同上 |
+| 進行中のイントロDOM更新 | `onboarding-web` ユニット `TourIntro.test.ts` |
+| 実際にゴールを完了したときの新キー記録 | `onboarding-e2e-test` の `goalCompleted` |
+| 管理画面の設定UI（既定値・保存・再読込） | `onboarding-manage-web` の spec + Storybook |
+
+**E2E の制約**: `onboarding-e2e-test` の legacy モードは dev 環境に配信済みの JS を使うため、
+ローカルの変更が反映されない（next モードのみローカルビルドを差し込める）。
+**旧側（`src/js/`）の挙動は §9-2 の手動確認が唯一の検証経路**なので必ず実施すること。
+
 ## 補足: 確認しなくてよいこと
 
 - **レポートの完了数の変化** — レポートは元から「最終ステップの表示」で集計しており、今回の変更で数え方は変わらない

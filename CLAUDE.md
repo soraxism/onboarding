@@ -161,6 +161,75 @@ GitHub Actions で自動同期される。同期ワークフローがないリ�
 - 依存関係を踏まえたリリース順序を決め、**実装者に提示して確認を取ってから**リリースを開始する（例: API → Batch → Web）
 - 決定した順序は `docs/features/{Jiraチケット番号}/{YYYY-MM-DD}_release-runbook.md` に残す
 
+## dev 環境へのデプロイ（動作確認の前に行う）
+
+**dev 環境は `develop` ブランチから作られる。** 作業ブランチに実装しただけでは
+dev 環境に反映されないため、**動作確認を始める前に作業ブランチを `develop` へマージして push する**。
+
+これはリリース経路（`release` → main / master）とは別の、確認用の経路。
+`develop` へのマージはリリースではないので、PR は不要。
+
+### 1. push で何が起きるか
+
+| リポジトリ | `develop` への push で起きること |
+| --- | --- |
+| `onboarding-manage-web` | dev 環境へデプロイ |
+| `onboarding-manage-api` | dev 環境へデプロイ |
+| `Onboarding-Editor-Extension` | エディタ拡張（dev）を Chrome ウェブストアへ自動申請 |
+| `onboarding-web` | プレビュー拡張・ビューワー拡張（dev）を Chrome ウェブストアへ自動申請 |
+| `onboarding-e2e-test` | `develop` が無いため何もしない |
+
+**`onboarding-web` の配信 JS（`onboarding-init.js` / `onboarding-init-next.js`）は
+CI では配信されない。** dev / prod とも S3 への手動アップロードが必要。
+
+```bash
+# ビルド（build/dev/s3/ に 2 ファイル出力される）
+cd onboarding-web && npx webpack --config webpack.dev.js
+# → build/dev/s3/onboarding-init.js       を (S3) dev-assets.onboarding-app.io/js/ へ
+# → build/dev/s3/onboarding-init-next.js  を 同上へ
+```
+
+**2 ファイルとも上げること。** 顧客は `use_refactored_onboarding_init` フラグで
+新旧どちらかを読むため、片方だけだと一部にしか届かない。
+アップロードは人が行う。エージェントはビルドまで済ませて依頼する。
+
+### 2. 手順
+
+`develop` へのマージは **`origin/develop` から行う**。ローカルの `develop` は
+他案件の未 push コミットを抱えていることがあり、そのまま push すると巻き込む。
+
+```bash
+cd {リポジトリ}
+git fetch origin develop
+
+# ローカル develop を触らないよう detached HEAD で作業する
+git switch --detach origin/develop
+git merge --no-ff feature/ABC-123 -m "Merge branch 'feature/ABC-123' into develop"
+git push origin HEAD:develop
+```
+
+マージ後は push の前にテストを流す（`develop` 側の変更と衝突していないかの確認）。
+
+### 3. manifest のバージョン衝突
+
+拡張機能のあるリポジトリでは、`develop` 側でも他者がバージョンを上げているため
+manifest でコンフリクトすることが多い。
+
+- **解決は「大きい方を採用」**。`develop` 側の値より小さいと、Chrome ウェブストアの
+  アップロードが `PKG_INVALID_VERSION_NUMBER` で必ず失敗する
+- 自分の採番が `develop` 以下だった場合は、`develop` の値を基準に採番し直す
+
+```bash
+# 採番済みの自分の値を採用する場合
+git checkout --theirs {manifest のパス} && git add {同}
+```
+
+### 4. 確認
+
+```bash
+gh run list --branch develop --limit 3
+```
+
 ## ドキュメントの残し方
 
 置き場所と命名の詳細は [README.md](README.md) にある。

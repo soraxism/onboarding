@@ -17,6 +17,34 @@ Claude Code（以下「エージェント」）が dev 環境で動作確認を�
 | **ブラウザの対話的な操作** | **×** | ブラウザを直接操作する手段（Playwright MCP 等）は持たない。**すべてスクリプト経由**になる |
 | **ストア配布版の拡張機能での確認** | **×** | 読み込むのはローカルビルド。インストール導線と自動更新は人が実施する |
 
+## テスト開始時にやること
+
+**確認したい実装が dev 環境に載っていなければ、何を確認しても意味がない。**
+どこを見ているかは対象ごとに違う。
+
+| 対象 | 何が動いているか | 反映のさせ方 |
+|---|---|---|
+| 管理画面 | dev にデプロイ済みのアプリ | `develop` へマージして push（自動デプロイ） |
+| 管理 API | 同上 | 同上 |
+| エンドユーザー側（デモサイト） | S3 の配信 JS | **ビルドして人が S3 へアップロード**（CI では配信されない） |
+| 拡張機能 | ローカルのビルド成果物 | ローカルでビルドするだけ |
+
+手順は [CLAUDE.md](../../CLAUDE.md) の「dev 環境へのデプロイ」に従う。要点は 3 つ。
+
+1. 作業ブランチを **`origin/develop`** へマージして push する（ローカルの `develop` は使わない）
+2. `onboarding-web` の配信 JS は `npx webpack --config webpack.dev.js` でビルドし、
+   `build/dev/s3/` の **2 ファイルとも** S3 へ上げてもらう。**アップロードは人が行う**ので、
+   ビルドまで済ませて依頼する
+3. 拡張機能は「拡張機能の確認」のとおりローカルでビルドする
+
+反映されたかは、確認を始める前に実物で確かめる。
+
+```bash
+# 配信JSに変更が入っているか（例: ONBS-1991 で追加したキー）
+curl -s https://dev-assets.onboarding-app.io/js/onboarding-init.js | grep -c onb_last_step_displayed_goals_
+curl -s https://dev-assets.onboarding-app.io/js/onboarding-init-next.js | grep -c onb_last_step_displayed_goals_
+```
+
 ## 環境
 
 ### 管理画面

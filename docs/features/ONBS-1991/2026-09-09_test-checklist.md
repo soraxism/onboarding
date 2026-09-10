@@ -15,6 +15,23 @@
 | ブラウザ | Chrome（拡張機能の検証があるため） |
 | 実施方法 | 管理画面・エンドユーザー側・拡張機能とも Claude Code に任せられる。手順は [docs/testing/](../../testing/README.md) |
 
+### 開始前に dev へ反映する（必須）
+
+作業ブランチのままでは dev 環境に載らない。詳細は [CLAUDE.md](../../../CLAUDE.md) の「dev 環境へのデプロイ」。
+
+| 対象 | 状態 |
+|---|---|
+| 管理画面 / 管理 API | `develop` へマージ済み・デプロイ済み |
+| エディタ / プレビュー / ビューワー拡張 | `develop` へ push 済み（ストア申請済み）。**確認にはローカルビルドを使う** |
+| エンドユーザー側の配信 JS | **S3 への手動アップロードが必要**（`onboarding-web/build/dev/s3/` の 2 ファイル） |
+
+配信 JS が反映されたかは確認前に実物で見る。0 なら未反映。
+
+```bash
+curl -s https://dev-assets.onboarding-app.io/js/onboarding-init.js | grep -c onb_last_step_displayed_goals_
+curl -s https://dev-assets.onboarding-app.io/js/onboarding-init-next.js | grep -c onb_last_step_displayed_goals_
+```
+
 **拡張機能を確認する前にビルドすること。** 読み込むのはソースではなくビルド成果物なので、
 古いビルドのまま確認すると誤判定する。§2 の前に次を通しておく。
 

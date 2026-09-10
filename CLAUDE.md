@@ -208,21 +208,40 @@ git merge --no-ff feature/ABC-123 -m "Merge branch 'feature/ABC-123' into develo
 git push origin HEAD:develop
 ```
 
-マージ後は push の前にテストを流す（`develop` 側の変更と衝突していないかの確認）。
+push の前に次の 2 つを済ませる。
 
-### 3. manifest のバージョン衝突
+1. **テストを流す**（`develop` 側の変更と衝突していないかの確認）
+2. 拡張機能のあるリポジトリでは **`ext-version-bump` で採番する**（下記）
 
-拡張機能のあるリポジトリでは、`develop` 側でも他者がバージョンを上げているため
-manifest でコンフリクトすることが多い。
+### 3. 拡張機能の manifest バージョン
 
-- **解決は「大きい方を採用」**。`develop` 側の値より小さいと、Chrome ウェブストアの
-  アップロードが `PKG_INVALID_VERSION_NUMBER` で必ず失敗する
-- 自分の採番が `develop` 以下だった場合は、`develop` の値を基準に採番し直す
+**バージョンは手で決めない。** 各リポジトリの `ext-version-bump` スキルを使う。
+
+| リポジトリ | 対象 manifest |
+| --- | --- |
+| `onboarding-web` | preview / viewer × dev / prod の 4 ファイル |
+| `Onboarding-Editor-Extension` | dev / prod の 2 ファイル |
 
 ```bash
-# 採番済みの自分の値を採用する場合
-git checkout --theirs {manifest のパス} && git add {同}
+/ext-version-bump              # 対象を聞かれる
+# 直接叩く場合
+node .claude/skills/ext-version-bump/scripts/bump-version.mjs --dry-run
 ```
+
+スキルは **Chrome ウェブストアの現行版（審査待ちドラフトを含む）を基準に**採番する。
+ローカルやリポジトリの値からインクリメントしないため、`develop` 側で他者が採番していても
+衝突せず、`PKG_INVALID_VERSION_NUMBER` での申請失敗も起きない。
+採番種別はブランチ名から決まる（`feature/` → マイナー +1 / `hotfixes/` 等 → パッチ +1）。
+
+実行するタイミングは 2 つある。**どちらも `develop` へ push する前**。
+
+- 実装が一通り終わったとき
+- `develop` へマージして manifest がコンフリクトしたとき（衝突は他者の採番と重なったということ。
+  どちらかを選ぶのではなく、マージを解決してからスキルを実行して採番し直す）
+
+**ストアへ上がった後に再実行しないこと。** スキルはストアの現行版を基準にするため、
+申請が通った直後に実行すると、その値からさらに上がる。中身が同じものを
+別バージョンで再申請するだけになる。次の変更に着手するときに実行すればよい。
 
 ### 4. 確認
 

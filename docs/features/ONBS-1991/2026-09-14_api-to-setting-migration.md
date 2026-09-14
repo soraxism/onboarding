@@ -63,31 +63,53 @@ LocalStorage は永続で、sync ドメインの写しからも復元される�
 **先方が呼び出しをやめても、こちらのJSが供給し続ける。**
 
 ```js
-// 例: src/customize/prod/722/makeup_preview.js
+// src/customize/prod/13/makeup_preview.js（7738 / 7740 も同じブロック）
 // クライアント側でAPIが叩かれておらずローカルストレージに値がない場合に、
 // イントロのカスタムステータスが上書きされるのを防ぐ
-const lsKey = 'onb_checked_goals_ids_' + STANDSUnit.tour_id
-if (localStorage.getItem(lsKey) == null) {
+if (localStorage.getItem('onb_checked_goals_ids_airmate') == null) {
     STANDSMotion.setCheckedGoalIds([])
 }
 ```
 
 ---
 
-## 対象ツアー（社内カスタムJSから確認できる分）
+## 対象ツアー（2026-09-14 時点）
 
-`onboarding-web/src/customize/prod/`（配布物は `Onboarding-Makeup-JS-CSS/tours/`）
+`onboarding-web/src/customize/prod/`（配布物は `Onboarding-Makeup-JS-CSS/tours/`）の
+全 54 ツアーを走査した結果。**稼働中は 3 ツアー**。
 
-| ツアー | 呼び出し | 備考 |
-|---|---|---|
-| `65` | `setCheckedGoalIds(comp_goals)` × 3 | 独自の finish 処理で `onb_complete_goals_` を組み立てて渡す |
-| `13` | `setCheckedGoalIds([])` | キーが無いときのみ |
-| `722` | `setCheckedGoalIds([])` | キーが無いときのみ |
-| `7738` | `setCheckedGoalIds([])` | **キーが `onb_checked_goals_ids_airmate` とツアーID直書き** |
-| `7740` | `setCheckedGoalIds([])` | キーが無いときのみ |
+| ツアー | 呼び出し | LSキー | 状態 |
+|---|---|---|---|
+| `13` | キーが無いときだけ `setCheckedGoalIds([])` | **`onb_checked_goals_ids_airmate`（直書き）** | 稼働中 |
+| `7738` | 同上 | **同上** | 稼働中 |
+| `7740` | 同上 | **同上** | 稼働中 |
+
+**3 ツアーは tourID `airmate` を共有しており、LocalStorage のキーも共有する。**
+1 つを掃除すれば 3 つとも掃除される反面、1 つでも埋め直すと 3 つとも API 分岐に戻る。
+移行は 3 ツアーまとめて行うこと。
+
+削除済み: `65`（独自 finish から `setCheckedGoalIds(comp_goals)` を 3 箇所で呼んでいた）、
+`722`（`STANDSUnit.tour_id` でキーを作る系）。
 
 **このAPIは先方の実装から直接叩かれている可能性が高く、grep では呼び出し元を網羅できない。**
 上表は社内カスタムJSに現れる分のみ。移行前に先方へ利用状況を確認すること。
+
+## 設定を切り替えても効かないツアー（APIとは別経路）
+
+`setCheckedGoalIds()` を使っていなくても、**`onb_display_goals_` を基準に自前でチェックを
+描いている**ツアーがある。エンジンが `last_step_displayed` 基準で描いた直後に上書きするため、
+**設定を切り替えても見た目が変わらない**。
+
+| ツアー | 内容 | 状態 |
+|---|---|---|
+| `23` | `onb_ext_start` で `onb_display_goals_` に直接ゴールIDを書き足し、特定ゴールを強制的に表示済み扱いにする | 稼働中 |
+| `957` | イントロを開くたびに `onb_display_goals_` 基準で「確認済み / 未確認」を自前描画 | **公開停止中** |
+
+削除済み: `982`・`999`（いずれも `957` と同型）。
+
+移行するならカスタムJS側の描画も併せて直す必要がある。`23` は
+「強制的にチェックを付ける」意図そのものが `last_step_displayed` では成立しない
+（`onb_display_goals_` がチェック判定に使われなくなるため）。
 
 ---
 
@@ -101,7 +123,8 @@ if (localStorage.getItem(lsKey) == null) {
 
 ### 2. カスタムJSの供給を止める
 
-`onb_ext_init` 等でキーを埋めている箇所を外す（上表の `13` / `722` / `7738` / `7740`）。
+`onb_ext_init` でキーを埋めている箇所を外す（`13` / `7738` / `7740`）。
+3 ツアーとも同じブロックなので、**3 つまとめて外さないとキーが埋め直される**。
 
 ### 3. 既存エンドユーザーのLSを掃除する
 

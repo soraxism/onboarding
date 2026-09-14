@@ -3,6 +3,7 @@
 詳細ドキュメント:
 - 現状調査: [docs/ONBS-1991/2026-09-07_current-behavior-survey.md](./2026-09-07_current-behavior-survey.md)
 - 設計案（管理画面UI / データ / 実装方針）: [docs/ONBS-1991/2026-09-07_admin-ui-and-data-design.md](./2026-09-07_admin-ui-and-data-design.md)
+- 公開APIからの移行手順: [2026-09-14_api-to-setting-migration.md](./2026-09-14_api-to-setting-migration.md)
 
 ---
 

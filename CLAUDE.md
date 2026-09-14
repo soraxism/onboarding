@@ -53,11 +53,59 @@
 # デフォルトブランチ名を確認
 git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@'
 
-# 最新化 → ブランチ作成
-git checkout main   # または master
-git pull origin main
-git checkout -b feature/ABC-123
+# リモートを最新化（本体のブランチは切り替えない）
+git -C {リポジトリ} fetch origin main   # または master
+
+# 最新の main からワークツリーごとブランチを作る（「5. ワークツリーで作業する」を参照）
+git -C {リポジトリ} worktree add -b feature/ABC-123 $WT origin/main
 ```
+
+`git checkout -b` で本体のブランチを切り替える方法は、**本体で他の案件が動いていないと
+分かっている場合のみ**にする。
+
+### 5. ワークツリーで作業する（既定）
+
+**同じリポジトリで複数の案件が並行することが増えたため、実装は git worktree で行う。**
+本体のチェックアウトは触らない。
+
+本体で `git switch` すると、別案件を進めている作業を巻き込む。ブランチが変わったことに
+気づかないままビルド・テストすると、**別ブランチのコードを対象に確認して誤った結論を出す**。
+
+```bash
+# scratchpad など、リポジトリの外に作る（リポジトリ内に作ると管理対象が汚れる）
+WT=<作業用ディレクトリ>/{リポジトリ名}-{チケット番号}
+
+git -C {リポジトリ} worktree add $WT feature/ABC-123          # 既存ブランチで作業する
+git -C {リポジトリ} worktree add -b feature/ABC-123 $WT main  # 新規ブランチを切る
+git -C {リポジトリ} worktree add --detach $WT origin/develop  # 読み取り・ビルドだけなら detached
+
+ln -s {リポジトリ}/node_modules $WT/node_modules              # 依存は本体を借りる
+```
+
+- **ブランチで作業するなら `--detach` を付けない。** detached だとコミットしてもブランチが進まない
+- **読むだけ・ビルドするだけなら `--detach`。** ブランチを占有しない
+- `node_modules` は symlink で足りる。`npm ci` をやり直す必要はない
+
+#### 終わったら必ず片付ける
+
+```bash
+rm -f $WT/node_modules $WT/.env*        # symlink を先に外す
+git -C {リポジトリ} worktree remove --force $WT
+git -C {リポジトリ} worktree prune
+```
+
+**ブランチをチェックアウトしたワークツリーを残すと、本体で同じブランチに切り替えられなくなる。**
+残骸がないかは `git worktree list` で確認する。
+
+#### リポジトリごとの注意
+
+| リポジトリ | ワークツリーで追加に必要なもの |
+|---|---|
+| `onboarding-manage-web` | テスト前に `npx nuxi prepare`。`.nuxt/tsconfig.json` が無いと vitest が起動しない |
+| `onboarding-web` | `ext-version-bump` を使うなら `.env.webstore` の symlink（git 管理外で本体にしかない） |
+
+`docs/testing/credentials.local.md` のように **git 管理外で本体にしか無いファイル**は
+ワークツリーへ来ない。必要なものは symlink するか、本体のパスを直接指す。
 
 ## PR・リリース運用（各プロダクトリポジトリ）
 
@@ -237,14 +285,25 @@ cd onboarding-web && npx webpack --config webpack.dev.js
 `develop` へのマージは **`origin/develop` から行う**。ローカルの `develop` は
 他案件の未 push コミットを抱えていることがあり、そのまま push すると巻き込む。
 
-```bash
-cd {リポジトリ}
-git fetch origin develop
+**マージ用のワークツリーを切って行う**（「5. ワークツリーで作業する」を参照）。
+本体のチェックアウトは別案件が使っていることがある。
 
-# ローカル develop を触らないよう detached HEAD で作業する
-git switch --detach origin/develop
-git merge --no-ff feature/ABC-123 -m "Merge branch 'feature/ABC-123' into develop"
-git push origin HEAD:develop
+```bash
+WT=<作業用ディレクトリ>/{リポジトリ名}-develop
+git -C {リポジトリ} fetch origin develop
+git -C {リポジトリ} worktree add --detach $WT origin/develop
+
+git -C $WT merge --no-ff feature/ABC-123 -m "Merge branch 'feature/ABC-123' into develop"
+git -C $WT push origin HEAD:develop
+
+git -C {リポジトリ} worktree remove --force $WT   # 片付け
+```
+
+**`develop` は release からの取り込みで作り直されることがある。** 以前マージしたはずの
+コミットが消えていることがあるので、動作確認の前に反映されているかを確かめる。
+
+```bash
+git -C {リポジトリ} merge-base --is-ancestor {マージしたSHA} origin/develop && echo OK || echo 消えている
 ```
 
 push の前に次の 2 つを済ませる。

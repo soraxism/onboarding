@@ -121,6 +121,46 @@ node docs/testing/scripts/check-access.mjs
 
 スクリーンショットは `docs/testing/artifacts/{実行日時}_{名前}/` に出る（git 追跡外）。
 
+### 他のブランチが作業中でも確認したいとき
+
+対象リポジトリのチェックアウトが別ブランチになっていることがある。**そのまま
+`git switch` してはいけない。** worktree を切れば、相手の作業に触れずに確認できる。
+
+```bash
+WT=<scratchpad>/ow-1991
+git -C onboarding-web worktree add --detach $WT feature/ONBS-1991
+ln -s <repo>/node_modules $WT/node_modules     # 依存は本体を借りる
+ln -sfn <repo>/.env.webstore $WT/.env.webstore # ext-version-bump を使うなら必要
+cd $WT && npx webpack --config webpack.dev.js
+```
+
+`onboarding-manage-web` の worktree では、テストの前に `npx nuxi prepare` が要る
+（`.nuxt/tsconfig.json` が無いと vitest が起動しない）。終わったら
+`git worktree remove` で片付ける。ブランチを checkout した worktree を残すと、
+本体で同じブランチに切り替えられなくなる。
+
+### 配信JSを S3 アップロード前に確認する
+
+`onboarding-init.js` / `onboarding-init-next.js` は CI で配信されないため、
+S3 へ上げるまで dev には届かない。**エンジン本体は `dev-api` のレスポンスとして
+そのまま返ってくる**ので、ルート差し替えでローカルビルドを流し込めば先に確認できる。
+
+```js
+await page.route('**/dev-api.onboarding-app.io/v1/onboarding-init*', async (route) => {
+  await route.fulfill({ status: 200, contentType: 'application/javascript; charset=utf-8',
+                        body: fs.readFileSync(BUNDLE, 'utf-8') })
+})
+```
+
+ガイドのデータは別経路（`dev-v2api` の XHR JSON）なので、設定値だけ変えたいときは
+そちらを `route.fetch()` してから書き換えて `fulfill` する。管理画面を経由せずに
+エンジンの挙動を確認できる（`s4-11-midstep.mjs` がこの形）。
+
+### 陽性対照を同じ実行に入れる
+
+「チェックが付かないこと」を確かめる項目は、**同じ実行の中で「付く」ケースも通す**。
+セレクタや前提が壊れて何も検出できていないだけ、という失敗に気づけない。
+
 ## 拡張機能の確認
 
 ### ビルドしてから確認する

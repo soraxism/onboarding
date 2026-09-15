@@ -42,12 +42,15 @@ cp docs/testing/credentials.sample.md docs/testing/credentials.local.md
 
 ## エンドユーザー側デモサイト（dev / prod 共通）
 
-**dev も prod も同じホスト。** 読む配信をクエリで切り替えるだけなので認証も共通。
+**dev も prod も同じホスト。** 読む配信（dev / prod・旧JS / 新TS）は
+`env` と `type` のクエリで切り替わるだけなので、**認証は 4 通りとも共通**。
+
+URL の一覧は [manual-test-runbook.md](./manual-test-runbook.md) の「環境」にある。
+ここに一部だけ転記すると、載っていない組み合わせが無いように見えるため書かない。
 
 | 項目 | 値 |
 |---|---|
-| URL（dev 配信） | https://dev.onboarding.co.jp/demo/onb-web-refactor/ |
-| URL（prod 配信） | https://dev.onboarding.co.jp/demo/onb-web-refactor/?env=prod |
+| URL | https://dev.onboarding.co.jp/（**このホスト全体に効く**） |
 | BASIC認証 ID | `<BASIC認証のID>`（管理画面とは別の値） |
 | BASIC認証 PW | `<BASIC認証のPW>` |
 | ログイン ID | — （サイト側のログインは無い） |

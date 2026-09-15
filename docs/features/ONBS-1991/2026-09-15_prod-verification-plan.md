@@ -8,22 +8,17 @@ dev での確認内容は [2026-09-09_test-checklist.md](./2026-09-09_test-check
 
 ## 環境
 
+**環境の一覧（管理画面・プロダクト ID・デモサイト）は
+[docs/testing/manual-test-runbook.md](../../testing/manual-test-runbook.md) の「環境」にある。**
+ここでは prod の該当分だけを再掲する。
+
 | 区分 | 値 |
 |---|---|
-| 管理画面 | https://manage.onboarding-app.io/login/ |
-| アカウント ID | 312 |
-| プロダクト（旧JS用・「リファクタ前」） | 391 |
-| プロダクト（新TS用・「リファクタ後」） | 392 |
-| デモサイト（旧JS） | https://dev.onboarding.co.jp/demo/onb-web-refactor/?env=prod |
-| デモサイト（新TS） | https://dev.onboarding.co.jp/demo/onb-web-refactor/?env=prod&type=new |
+| 管理画面 | https://manage.onboarding-app.io/login/（アカウント ID 312・BASIC認証なし） |
+| プロダクト | 旧JS = 391（リファクタ前） / 新TS = 392（リファクタ後） |
+| デモサイト | `…/demo/onb-web-refactor/?env=prod`（旧JS） / `…&type=new`（新TS） |
 
-デモサイトは BASIC 認証あり（dev と同じホストのため認証も同じ）。
-`env` / `type` のクエリで `ONB.ignition_url` を切り替えている作りで、prod は次の 2 本を読む。
-
-```
-https://api.onboarding-app.io/v1/onboarding-init?aid=312&pid=391   # 旧JS（jQuery 同梱）
-https://api.onboarding-app.io/v1/onboarding-init?aid=312&pid=392   # 新TS
-```
+認証は `docs/testing/credentials.local.md`（git 追跡外）。
 
 ## 1. リリースが配信に届いたかの確認（最初に行う）
 

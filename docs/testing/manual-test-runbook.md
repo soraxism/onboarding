@@ -50,11 +50,19 @@ curl -s https://dev-assets.onboarding-app.io/js/onboarding-init-next.js | grep -
 
 ## 環境
 
+**dev と prod で同じ構成が用意されている。** 通常の確認は dev で行い、
+prod はリリース後の最終確認にだけ使う。認証は [credentials.local.md](./credentials.local.md)。
+
 ### 管理画面
 
-`https://dev-manage.onboarding-app.io/`（BASIC認証あり・ログイン情報は credentials.local.md）
+| | dev | prod |
+|---|---|---|
+| URL | https://dev-manage.onboarding-app.io/ | https://manage.onboarding-app.io/login/ |
+| BASIC認証 | あり（デモサイトとは別の値） | **なし** |
+| アカウント | エンドユーザーリファクタ移行期間用 | アカウント ID 312 |
+| ガイド一覧 | `{URL}/guides?product_id={ID}` | 同左 |
 
-アカウント: **エンドユーザーリファクタ移行期間用**
+**prod は本番。** ツアーの作成・編集・削除は検証用に作ったものだけに限る。
 
 ### 検証用プロダクトとデモサイト
 
@@ -65,13 +73,25 @@ curl -s https://dev-assets.onboarding-app.io/js/onboarding-init-next.js | grep -
 | | 旧 JS（legacy） | 新 TS（next） |
 |---|---|---|
 | プロダクト名 | リファクタ前 | リファクタ後 |
-| `product_id` | 247 | 248 |
+| `product_id`（dev） | 247 | 248 |
+| `product_id`（prod） | 391 | 392 |
 | 配信される JS | `js/onboarding-init.js`（`src/js/` 由来） | `js/onboarding-init-next.js`（`src/` 由来） |
-| デモサイト | https://dev.onboarding.co.jp/demo/onb-web-refactor/ | https://dev.onboarding.co.jp/demo/onb-web-refactor/?type=new |
+| デモサイト（dev） | https://dev.onboarding.co.jp/demo/onb-web-refactor/ | https://dev.onboarding.co.jp/demo/onb-web-refactor/?type=new |
+| デモサイト（prod） | https://dev.onboarding.co.jp/demo/onb-web-refactor/?env=prod | https://dev.onboarding.co.jp/demo/onb-web-refactor/?env=prod&type=new |
 
-- デモサイトは BASIC認証あり（ID/PW は credentials.local.md。管理画面とは別の値）
+- **デモサイトは dev も prod も同じホスト**。`env` / `type` のクエリで `ONB.ignition_url` を
+  切り替えているだけなので、BASIC認証も共通（ID/PW は credentials.local.md。管理画面とは別の値）
 - 埋め込みタグは設置済み。ステップのターゲットにする要素はページ内のどれでもよい
-- ガイド一覧を開く URL は `https://dev-manage.onboarding-app.io/guides?product_id={ID}`
+
+エンジン本体は配信 API のレスポンスとして直接返る。**どちらを読んでいるかは実物で確かめられる。**
+
+```bash
+# dev: aid=146 / pid=247,248     prod: aid=312 / pid=391,392
+curl -s "https://api.onboarding-app.io/v1/onboarding-init?aid=312&pid=391" | grep -c 'jQuery JavaScript Library'
+```
+
+`jQuery JavaScript Library` は**旧JS にだけ**含まれる。prod ビルドは LICENSE コメントが
+落ちるため、dev のように先頭コメントでは新旧を判別できない。
 
 ## 実行の準備
 

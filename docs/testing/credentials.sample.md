@@ -26,3 +26,13 @@ URL やプロダクトIDのような機密でない情報は [manual-test-runboo
 |---|---|
 | BASIC認証 ID | `<BASIC認証のID>` |
 | BASIC認証 PW | `<BASIC認証のPW>` |
+
+## 管理画面（prod）
+
+本番リリース後の確認で使う。**設定変更は検証用ツアーに限ること。**
+
+| 項目 | 値 |
+|---|---|
+| URL | https://manage.onboarding-app.io/login/ |
+| ログイン ID | `<ログイン用メールアドレス>` |
+| ログイン PW | `<ログインパスワード>` |

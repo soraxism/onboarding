@@ -29,6 +29,8 @@ cp docs/testing/credentials.sample.md docs/testing/credentials.local.md
 
 本番リリース後の確認で使う。**設定変更は検証用ツアーに限ること。**
 
+動作確認専用のユーザーを用意して使う。**2要素認証は設定しない**（有効だと自動ログインできない）。
+
 | 項目 | 値 |
 |---|---|
 | URL | https://manage.onboarding-app.io/login/ |
@@ -36,7 +38,7 @@ cp docs/testing/credentials.sample.md docs/testing/credentials.local.md
 | BASIC認証 PW | — |
 | ログイン ID | `<ログイン用メールアドレス>` |
 | ログイン PW | `<ログインパスワード>` |
-| 2要素認証 | `<有効 / 無効>` |
+| 2要素認証 | 無効（動作確認専用ユーザーのため設定しない） |
 
 ## エンドユーザー側デモサイト（dev / prod 共通）
 

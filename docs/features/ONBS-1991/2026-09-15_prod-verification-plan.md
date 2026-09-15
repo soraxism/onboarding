@@ -32,8 +32,8 @@ for p in 391 392; do
 done
 ```
 
-新旧の取り違えは `jQuery JavaScript Library` の有無で判別する（**旧JS にだけ含まれる**）。
-prod ビルドは LICENSE コメントが落ちるため、dev のように先頭コメントでは判別できない。
+新旧の取り違えは `jquery` の有無で判別する（**jQuery を同梱しているのは旧JS だけ**）。
+判定材料の使い分けは [manual-test-runbook.md](../../testing/manual-test-runbook.md) の「環境」にある。
 
 ## 2. 確認項目
 

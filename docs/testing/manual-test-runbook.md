@@ -87,11 +87,21 @@ prod はリリース後の最終確認にだけ使う。認証は [credentials.l
 
 ```bash
 # dev: aid=146 / pid=247,248     prod: aid=312 / pid=391,392
-curl -s "https://api.onboarding-app.io/v1/onboarding-init?aid=312&pid=391" | grep -c 'jQuery JavaScript Library'
+curl -s "https://api.onboarding-app.io/v1/onboarding-init?aid=312&pid=391" | grep -ci jquery
 ```
 
-`jQuery JavaScript Library` は**旧JS にだけ**含まれる。prod ビルドは LICENSE コメントが
-落ちるため、dev のように先頭コメントでは新旧を判別できない。
+**jQuery を同梱しているのは旧JS だけ**なので、`jquery` が 1 件以上あれば旧JS。
+
+判定に使う文字列を間違えないこと。**ライセンス表記（`jQuery JavaScript Library`）は
+dev ビルドでは別ファイル（`*.LICENSE.txt`）へ切り出され、本体に残らない。**
+これで判定すると dev の旧JS を新TS と誤認する。逆に**先頭のコメント行は dev にしか無い**
+（prod ビルドでは落ちる）ため、そちらも環境をまたいでは使えない。
+
+| 判定材料 | dev | prod |
+|---|---|---|
+| `jquery` の有無 | ○ | ○ |
+| `jQuery JavaScript Library` | **×**（別ファイルへ切り出される） | ○ |
+| 先頭の `/*! For license ... */` | ○ | **×**（落ちる） |
 
 ## 実行の準備
 
@@ -106,16 +116,18 @@ cp docs/testing/credentials.sample.md docs/testing/credentials.local.md
 # → credentials.local.md の <> を埋める
 
 # 疎通確認（ここが通らなければ以降は実施しない）
-node docs/testing/scripts/check-access.mjs
+node docs/testing/scripts/check-access.mjs             # dev
+node docs/testing/scripts/check-access.mjs --env prod  # prod（リリース後の確認前に）
 ```
 
-`check-access.mjs` は次を確認する。5/5 OK が出れば環境は使える。
+`check-access.mjs` は次を確認する。7/7 OK が出れば環境は使える。
 
 1. 管理画面へログインできる
 2. 両プロダクトのガイド一覧を開ける
-3. 両デモサイトで `STANDSUnit` が生成される（`pid` が 247 / 248 になっている）
+3. 両デモサイトで `STANDSUnit` が生成される（`pid` が指定のプロダクトになっている）
+4. 配信タグ（ignition URL）が 200 を返し、**新旧それぞれ期待どおりのエンジン**である
 
-ブラウザを目視したいときは `--headed` を付ける。
+ブラウザを目視したいときは `--headed` を付ける。環境は `--env dev|prod`（既定は dev）。
 
 ## スクリプトの書き方
 

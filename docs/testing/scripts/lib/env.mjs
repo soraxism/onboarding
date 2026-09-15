@@ -32,9 +32,17 @@ export function loadPlaywright() {
  * 値を追跡対象のファイルへ書かないための仕組みなので、
  * 読み取った値をログやスクリーンショットへ出さないこと。
  *
- * @returns {{manage: {url: string, basicId: string, basicPw: string, loginId: string, loginPw: string}, demo: {basicId: string, basicPw: string}}}
+ * 管理画面は dev / prod で節が分かれている。デモサイトは**同じホストで
+ * クエリを変えるだけ**なので節は 1 つしかなく、両環境で同じ値を使う。
+ *
+ * BASIC 認証が無い環境（prod の管理画面）では `—` と書かれている。
+ * その場合 basicId / basicPw は null を返す。**`—` を ID として渡さないこと。**
+ *
+ * @param {'dev'|'prod'} env
+ * @returns {{manage: {url: string, basicId: string|null, basicPw: string|null, loginId: string, loginPw: string}, demo: {basicId: string, basicPw: string}}}
  */
-export function loadCredentials() {
+export function loadCredentials(env = 'dev') {
+  if (!['dev', 'prod'].includes(env)) throw new Error(`env は dev|prod のいずれか（指定値: ${env}）`)
   const file = path.join(TESTING_DIR, 'credentials.local.md')
   if (!fs.existsSync(file)) {
     throw new Error(
@@ -55,20 +63,29 @@ export function loadCredentials() {
     if (!value || value.startsWith('<')) {
       throw new Error(`credentials.local.md の「${label}」が未記入です`)
     }
+    // 「— （BASIC認証なし）」のように、その環境に無いものは `—` で始める約束
+    if (value.startsWith('—')) return null
+    return value
+  }
+
+  const manageSection = `管理画面（${env}）`
+  const required = (section, label) => {
+    const value = pick(section, label)
+    if (value === null) throw new Error(`credentials.local.md の「${section}」の「${label}」は必須です`)
     return value
   }
 
   return {
     manage: {
-      url: pick('管理画面', '| URL '),
-      basicId: pick('管理画面', 'BASIC認証 ID'),
-      basicPw: pick('管理画面', 'BASIC認証 PW'),
-      loginId: pick('管理画面', 'ログイン ID'),
-      loginPw: pick('管理画面', 'ログイン PW'),
+      url: required(manageSection, '| URL '),
+      basicId: pick(manageSection, 'BASIC認証 ID'),
+      basicPw: pick(manageSection, 'BASIC認証 PW'),
+      loginId: required(manageSection, 'ログイン ID'),
+      loginPw: required(manageSection, 'ログイン PW'),
     },
     demo: {
-      basicId: pick('エンドユーザー側デモサイト', 'BASIC認証 ID'),
-      basicPw: pick('エンドユーザー側デモサイト', 'BASIC認証 PW'),
+      basicId: required('エンドユーザー側デモサイト', 'BASIC認証 ID'),
+      basicPw: required('エンドユーザー側デモサイト', 'BASIC認証 PW'),
     },
   }
 }

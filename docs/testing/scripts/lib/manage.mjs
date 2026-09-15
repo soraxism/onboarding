@@ -1,25 +1,53 @@
 import path from 'node:path'
 import { loadPlaywright, loadCredentials } from './env.mjs'
 
-/** 検証で使うプロダクト（manual-test-runbook.md の「環境」と対応） */
-export const PRODUCTS = {
-  /** 旧 JS（use_refactored_onboarding_init 無効）が配信される */
-  legacy: {
-    key: 'legacy',
-    label: 'リファクタ前',
-    productId: 247,
-    demoUrl: 'https://dev.onboarding.co.jp/demo/onb-web-refactor/',
+const DEMO_BASE = 'https://dev.onboarding.co.jp/demo/onb-web-refactor/'
+
+/**
+ * 検証環境（manual-test-runbook.md の「環境」と対応）。
+ *
+ * **デモサイトは dev / prod で同じホスト。** `env` と `type` のクエリで
+ * どの配信を読むかが決まるだけなので、BASIC 認証も共通。
+ */
+export const ENVS = {
+  dev: {
+    key: 'dev',
+    manageHost: 'dev-manage.onboarding-app.io',
+    accountId: 146,
+    accountName: 'エンドユーザーリファクタ移行期間用',
+    ignitionBase: 'https://dev-api.onboarding-app.io/v1/onboarding-init',
+    products: {
+      /** 旧 JS（use_refactored_onboarding_init 無効）が配信される */
+      legacy: { key: 'legacy', label: 'リファクタ前', productId: 247, demoUrl: DEMO_BASE },
+      /** 新 TS（use_refactored_onboarding_init 有効）が配信される */
+      next: { key: 'next', label: 'リファクタ後', productId: 248, demoUrl: `${DEMO_BASE}?type=new` },
+    },
   },
-  /** 新 TS（use_refactored_onboarding_init 有効）が配信される */
-  next: {
-    key: 'next',
-    label: 'リファクタ後',
-    productId: 248,
-    demoUrl: 'https://dev.onboarding.co.jp/demo/onb-web-refactor/?type=new',
+  prod: {
+    key: 'prod',
+    manageHost: 'manage.onboarding-app.io',
+    accountId: 312,
+    // dev と同名（動作確認専用ユーザーにはこのアカウントしか見えていない・2026-09-15 確認）
+    accountName: 'エンドユーザーリファクタ移行期間用',
+    ignitionBase: 'https://api.onboarding-app.io/v1/onboarding-init',
+    products: {
+      legacy: { key: 'legacy', label: 'リファクタ前', productId: 391, demoUrl: `${DEMO_BASE}?env=prod` },
+      next: { key: 'next', label: 'リファクタ後', productId: 392, demoUrl: `${DEMO_BASE}?env=prod&type=new` },
+    },
   },
 }
 
-export const ACCOUNT_NAME = 'エンドユーザーリファクタ移行期間用'
+/** 環境を取り出す。既定は dev（既存スクリプトが env を渡さないため） */
+export function getEnv(key = 'dev') {
+  const env = ENVS[key]
+  if (!env) throw new Error(`env は ${Object.keys(ENVS).join('|')} のいずれか（指定値: ${key}）`)
+  return env
+}
+
+/** 既定環境（dev）のプロダクト。env を意識しない既存スクリプト向け */
+export const PRODUCTS = ENVS.dev.products
+
+export const ACCOUNT_NAME = ENVS.dev.accountName
 
 /**
  * 検証で作るツアーの名前。
@@ -59,8 +87,8 @@ export function isGeneratedTourName(name) {
  *
  * @param {import('playwright').BrowserContext} context
  */
-export async function blockSelfGuides(context) {
-  const manageHost = 'dev-manage.onboarding-app.io'
+export async function blockSelfGuides(context, envKey = 'dev') {
+  const manageHost = getEnv(envKey).manageHost
   await context.route(/onboarding-init/, (route) => {
     let from = ''
     try {
@@ -84,7 +112,11 @@ export async function launchBrowser({ credentials, headless = true }) {
   const { chromium } = loadPlaywright()
   const browser = await chromium.launch({ headless })
   const context = await browser.newContext({
-    httpCredentials: { username: credentials.basicId, password: credentials.basicPw },
+    // BASIC 認証が無い環境（prod の管理画面）では basicId が null になる。
+    // 空の資格情報を渡すと 401 の再試行で落ちるため、丸ごと省く
+    ...(credentials.basicId
+      ? { httpCredentials: { username: credentials.basicId, password: credentials.basicPw } }
+      : {}),
     viewport: { width: 1440, height: 900 },
     locale: 'ja-JP',
   })
@@ -146,22 +178,24 @@ export function isLoggedIn(page) {
  * @param {import('playwright').Page} page
  * @param {typeof PRODUCTS.legacy} product
  */
-export async function switchToProduct(page, product) {
+export async function switchToProduct(page, product, accountName = ACCOUNT_NAME) {
   const currentName = page.locator('.headerTenants__mainName')
   await currentName.waitFor({ state: 'visible', timeout: 20000 })
   if ((await currentName.innerText()).trim() === product.label) return
 
   await page.locator('.headerTenants__toggle').click()
 
-  // プロダクト名だけでは他アカウントと衝突しうるので、アカウントのまとまりの中から選ぶ
-  const accountBlock = page
-    .locator('.headerTenants__dropdown > div')
-    .filter({
-      has: page.locator('.headerTenants__dropdown__accountName', { hasText: ACCOUNT_NAME }),
-    })
-  await accountBlock
+  // プロダクト名だけでは他アカウントと衝突しうるので、アカウントのまとまりの中から選ぶ。
+  // アカウント名が分かっていない環境ではドロップダウン全体から選ぶ
+  const scope = accountName
+    ? page.locator('.headerTenants__dropdown > div').filter({
+        has: page.locator('.headerTenants__dropdown__accountName', { hasText: accountName }),
+      })
+    : page.locator('.headerTenants__dropdown')
+  await scope
     .locator('.headerTenants__dropdown__productName')
     .getByText(product.label, { exact: true })
+    .first()
     .click()
 
   await page.waitForFunction(
@@ -180,10 +214,10 @@ export async function switchToProduct(page, product) {
  * @param {typeof PRODUCTS.legacy} product
  * @param {{url: string}} manage credentials.local.md の管理画面情報
  */
-export async function openGuideList(page, product, manage) {
+export async function openGuideList(page, product, manage, accountName = ACCOUNT_NAME) {
   await page.goto(new URL('/guides', manage.url).href, { waitUntil: 'domcontentloaded' })
   await page.waitForLoadState('networkidle')
-  await switchToProduct(page, product)
+  await switchToProduct(page, product, accountName)
   await waitForGuideList(page)
 }
 

@@ -258,12 +258,14 @@ export async function applyBasicAuthByHost(context, credentials) {
 
   await context.route('**/*', (route) => {
     const host = new URL(route.request().url()).host
-    const cred = host.includes('dev-manage.onboarding-app.io')
+    const cred = /^(dev-)?manage\.onboarding-app\.io$/.test(host)
       ? credentials.manage
       : host.includes('dev.onboarding.co.jp')
         ? credentials.demo
         : null
-    if (!cred) return route.continue()
+    // prod の管理画面のように BASIC 認証が無いホストでは何も足さない
+    // （basicId が null のまま組み立てると "Basic bnVsbDpudWxs" を送ってしまう）
+    if (!cred?.basicId) return route.continue()
     return route.continue({
       headers: { ...route.request().headers(), Authorization: header(cred) },
     })
@@ -300,6 +302,36 @@ export async function openEditorOnSite(page, context, { name, type, index = 0, t
   const editorPage = await opened
   await editorPage.waitForLoadState('load').catch(() => {})
   return editorPage
+}
+
+/**
+ * ガイド一覧のカードから「プレビュー」を選び、開いたタブを返す。
+ *
+ * **プレビュー拡張の e2e 用 postMessage（message-from-e2e）は prod では応答しない。**
+ * 管理画面のこの導線が実際の起動経路なので、本番の確認ではこちらを使う。
+ * unpacked で読み込んだ拡張機能を宛先にするため、事前に routeManageMessagesTo() を呼んでおくこと。
+ *
+ * @param {import('playwright').Page} page
+ * @param {import('playwright').BrowserContext} context
+ */
+export async function openPreviewOnSite(page, context, { name, type, index = 0, timeoutMs = 60000 } = {}) {
+  const card = findGuideCard(page, { name, type, index })
+  await card.waitFor({ state: 'visible', timeout: 20000 })
+  await card.scrollIntoViewIfNeeded()
+  await card.click({ button: 'right' })
+
+  const row = page
+    .locator('.listRow')
+    .filter({ hasText: 'プレビュー' })
+    .locator('visible=true')
+    .first()
+  await row.waitFor({ state: 'visible', timeout: 10000 })
+
+  const opened = context.waitForEvent('page', { timeout: timeoutMs })
+  await row.click()
+  const previewPage = await opened
+  await previewPage.waitForLoadState('load').catch(() => {})
+  return previewPage
 }
 
 /**

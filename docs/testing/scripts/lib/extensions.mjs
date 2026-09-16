@@ -53,6 +53,9 @@ export const VERSION_JSON_URL =
 export async function launchWithExtensions({
   credentials,
   keys,
+  // 読み込むビルドの差し替え（例: prod 版を別の場所にビルドして確認する）。
+  // { editor: '/path/to/package' } の形で渡す
+  pathOverrides = {},
   headed = false,
   userDataDir = '',
   recordVideoDir,
@@ -61,8 +64,9 @@ export async function launchWithExtensions({
   viewport = { width: 1600, height: 1800 },
 }) {
   const targets = keys.map((key) => {
-    const ext = EXTENSIONS[key]
-    if (!ext) throw new Error(`未知の拡張機能: ${key}`)
+    const base = EXTENSIONS[key]
+    if (!base) throw new Error(`未知の拡張機能: ${key}`)
+    const ext = pathOverrides[key] ? { ...base, path: pathOverrides[key] } : base
     if (!fs.existsSync(path.join(ext.path, 'manifest.json'))) {
       throw new Error(
         `${ext.label} のビルドがありません: ${ext.path}\n` +

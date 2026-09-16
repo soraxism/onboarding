@@ -10,24 +10,27 @@
  *   ゴール2（1ステップ）… §4-9 の境界確認
  */
 import { loadCredentials, prepareArtifactDir } from '../lib/env.mjs'
-import { PRODUCTS, launchBrowser, loginToManage, blockSelfGuides, openGuideList, shoot } from '../lib/manage.mjs'
+import { getEnv, launchBrowser, loginToManage, blockSelfGuides, openGuideList, shoot } from '../lib/manage.mjs'
 import { buildTourName } from '../lib/manage.mjs'
 
-const EDITOR_API = 'https://dev-editor-api.onboarding-app.io'
+const envKey = process.argv.find((a) => a.startsWith('--env='))?.split('=')[1] ?? 'dev'
+const ENV = getEnv(envKey)
+const EDITOR_API = ENV.editorApiBase
 
 const existingTourId = process.argv.find((a) => a.startsWith('--tour='))?.split('=')[1]
+const startUrl = process.argv.find((a) => a.startsWith('--start-url='))?.slice('--start-url='.length)
 const productKey = process.argv.find((a) => a.startsWith('--product='))?.split('=')[1] ?? 'next'
-const product = PRODUCTS[productKey]
+const product = ENV.products[productKey]
 if (!product) throw new Error(`未知のプロダクト: ${productKey}`)
 
-const c = loadCredentials()
+const c = loadCredentials(ENV.key)
 const dir = prepareArtifactDir('create-test-tour')
 console.log('成果物:', dir)
 const { browser, context } = await launchBrowser({ credentials: c.manage, headless: true })
-await blockSelfGuides(context)
+await blockSelfGuides(context, ENV.key)
 const page = await context.newPage()
 await loginToManage(page, c.manage)
-await openGuideList(page, product, c.manage)
+await openGuideList(page, product, c.manage, ENV.accountName)
 
 const name = buildTourName('ONBS-1991', 'チェックマーク')
 console.log('ツアー名:', name)
@@ -65,7 +68,10 @@ const visibleInputs = page.locator('input:visible')
 await visibleInputs.first().waitFor({ state: 'visible', timeout: 15000 })
 await visibleInputs.nth(0).fill(name)
 const urlInput = page.locator('input[placeholder*="https"]:visible').first()
-await urlInput.fill(product.demoUrl)
+// --start-url= で上書きできる。**同じ URL に複数のツアーが公開されていると、
+// どれが配信されるかはサーバー側の選択に委ねられる。** 既存ツアーと取り合いに
+// なる環境では、クエリを足した URL で作って棲み分ける
+await urlInput.fill(startUrl ?? product.demoUrl)
 await shoot(page, dir, '03_filled')
 
 const createdRes = page.waitForResponse((r) => r.request().method() === 'POST' && /\/tours?(\?|$)/.test(r.url()), { timeout: 30000 })
@@ -82,8 +88,8 @@ console.log('作成された tour id:', tourId, '/ 現在URL:', page.url())
 
 // ===== 3. operation_token を取得（管理画面のセッションで PUT /operation-token） =====
 // 管理画面は Cookie でなく localStorage の api_token を X-Onboarding-API-Token で送る
-const token = await page.evaluate(async (productId) => {
-  const res = await fetch('https://dev-manage-api.onboarding-app.io/v1/operation-token', {
+const token = await page.evaluate(async ({ productId, manageApi }) => {
+  const res = await fetch(`${manageApi}/v1/operation-token`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -94,7 +100,7 @@ const token = await page.evaluate(async (productId) => {
   })
   const json = await res.json()
   return json.operation_token
-}, product.productId)
+}, { productId: product.productId, manageApi: ENV.manageApiBase })
 if (!token) throw new Error('operation_token が取れない')
 console.log('operation_token: 取得できた（値は出さない）')
 

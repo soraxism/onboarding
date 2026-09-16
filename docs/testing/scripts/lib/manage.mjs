@@ -16,6 +16,8 @@ export const ENVS = {
     accountId: 146,
     accountName: 'エンドユーザーリファクタ移行期間用',
     ignitionBase: 'https://dev-api.onboarding-app.io/v1/onboarding-init',
+    manageApiBase: 'https://dev-manage-api.onboarding-app.io',
+    editorApiBase: 'https://dev-editor-api.onboarding-app.io',
     products: {
       /** 旧 JS（use_refactored_onboarding_init 無効）が配信される */
       legacy: { key: 'legacy', label: 'リファクタ前', productId: 247, demoUrl: DEMO_BASE },
@@ -30,6 +32,8 @@ export const ENVS = {
     // dev と同名（動作確認専用ユーザーにはこのアカウントしか見えていない・2026-09-15 確認）
     accountName: 'エンドユーザーリファクタ移行期間用',
     ignitionBase: 'https://api.onboarding-app.io/v1/onboarding-init',
+    manageApiBase: 'https://manage-api.onboarding-app.io',
+    editorApiBase: 'https://editor-api.onboarding-app.io',
     products: {
       legacy: { key: 'legacy', label: 'リファクタ前', productId: 391, demoUrl: `${DEMO_BASE}?env=prod` },
       next: { key: 'next', label: 'リファクタ後', productId: 392, demoUrl: `${DEMO_BASE}?env=prod&type=new` },

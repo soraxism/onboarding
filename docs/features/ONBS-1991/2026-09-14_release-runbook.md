@@ -183,6 +183,31 @@ gh pr merge 55 --repo stands/onboarding-e2e-test --squash
 
 ---
 
+## 実施記録（2026-09-16）
+
+| # | リポジトリ | PR（→release） | PR（release→base） | main/master の commit | タグ |
+|---|---|---|---|---|---|
+| ① | Onboarding-Manage-API | #855 | #856 | `3a13cc35` | **5.105.0** |
+| ② | Onboarding-Manage-Web | #1198 | #1205 | `a16529149` | **7.97.0** |
+| ② | Onboarding-Web | #1439 | #1444 | `aa76b782` | **6.9.0** |
+| ② | Onboarding-Editor-Extension | #384 | #385 | `73f795f` | **1.52.0** |
+| ③ | onboarding-e2e-test | #55（main へ直接） | — | — | 発行しない |
+
+- release → base の PR タイトルはいずれも `20260916 Release`
+- **`release` に他者のコミットは無かった**（4 リポジトリとも `base..release` が自分の 1 コミットのみ）
+- onboarding-web は ONBS-2011 との manifest 衝突を `8aabf0ea` で解決してから出した。
+  squash 後の値は prod 6.6.0 / 3.6.0・dev 3.122.1 / 1.59.1 で意図どおり
+- CI: 拡張機能の自動申請（Preview / Viewer / エディタ）は **success**。ストア審査は数日
+
+### 残作業
+
+| 担当 | 内容 |
+|---|---|
+| 実施者 | **配信 JS 2 ファイルの S3 アップロード ＋ CDN キャッシュ削除**（`~/Downloads/onbs-1991-prod-s3/`。master `aa76b782` からビルド） |
+| 実施者 | Chrome ウェブストアの審査通過確認 |
+| — | 反映後に [2026-09-15_prod-verification-plan.md](./2026-09-15_prod-verification-plan.md) の P-1〜P-8 を実施（P-9 は審査通過後） |
+| — | prod に作った検証ツアーの後始末 |
+
 ## 注意点
 
 ### 既定値なので段階的に有効化できる

@@ -1,0 +1,18 @@
+お世話になっております。
+こちらの監視ツールで検知されているscript errorについて以下調査をお願いしたいですm
+以前にこちらで問い合わせした件でメイト側で以下の処理を追加しまして監視をしていたところ1日に約20~30件くらい起きてることが確認できました。
+ONB.b = document.createElement('script');
+ONB.c = document.getElementsByTagName('head')[0];
+ONB.b.src = ONB.ignition_url;
+ONB.b.id = 'stands_onbd_point';
+ONB.b.charset = 'utf-8';
+ONB.b.async = 'async';
+// 追加した処理
+ONB.b.onerror = () => {
+　　// メイトで設定した監視ツールにエラー通知を送る処理　　　　
+　　reportScriptLoadFailureToNewRelic(ONB.b.src, 'Onboarding');
+      };
+直近１週間で特にAM10:00〜11:00頃に20件ほど一気にでていることがグラフから確認もできました。（スクショ参照）
+おそらく１週間よりも前から発生していると思われます。
+
+こちらについて御社でもなにか検知されていないか確認できますでしょうか？よろしくお願いします

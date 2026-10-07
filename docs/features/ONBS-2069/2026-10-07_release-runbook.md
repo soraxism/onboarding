@@ -64,10 +64,10 @@ git log --format='%h %an %s' origin/main..origin/release   # または origin/ma
 | 順 | リポジトリ | PR（feature → release） | 状態 |
 | --- | --- | --- | --- |
 | 1 | `Onboarding-AI-Chat` | [#88](https://github.com/stands/Onboarding-AI-Chat/pull/88) | ✅ **リリース済み（`1.35.0`）** |
-| 2 | `Onboarding-API-Next` | [#102](https://github.com/stands/Onboarding-API-Next/pull/102) | 開いたまま（レビュー未） |
-| 3 | `onboarding-manage-api` | [#880](https://github.com/stands/Onboarding-Manage-API/pull/880) | 開いたまま（レビュー未） |
-| 4 | `onboarding-manage-web` | [#1224](https://github.com/stands/Onboarding-Manage-Web/pull/1224) | 開いたまま（レビュー未） |
-| 5 | `onboarding-web` | [#1459](https://github.com/stands/Onboarding-Web/pull/1459) | 開いたまま（レビュー未） |
+| 2 | `Onboarding-API-Next` | [#102](https://github.com/stands/Onboarding-API-Next/pull/102) | ✅ レビュー通過（指摘なし）・開いたまま |
+| 3 | `onboarding-manage-api` | [#880](https://github.com/stands/Onboarding-Manage-API/pull/880) | ✅ レビュー通過（指摘なし）・開いたまま |
+| 4 | `onboarding-manage-web` | [#1224](https://github.com/stands/Onboarding-Manage-Web/pull/1224) | ✅ レビュー通過（指摘1件・見送り）・開いたまま |
+| 5 | `onboarding-web` | [#1459](https://github.com/stands/Onboarding-Web/pull/1459) | ✅ レビュー通過（指摘なし）・開いたまま |
 
 ### 1 のリリース実績（2026-10-07）
 
@@ -81,20 +81,36 @@ git log --format='%h %an %s' origin/main..origin/release   # または origin/ma
 CodeRabbit の指摘は2件（どちらも safe-area）で対応済み。
 あわせて、つまみ（ハンドルバー）をボタンごと共通化するリファクタを入れている。
 
-### 2〜5 の残作業
+### 2〜5 のレビュー結果（2026-10-07 完了）
 
-**レビューのトリガーがまだ。** `@coderabbitai review` を打つ必要がある。
-10/7 中に 4 回使っているため、**枠（5回/時）の回復を待ってから順に**打つこと。
+**4リポジトリとも通過済み。** 残るは `release` へのマージ以降だけ。
 
-```bash
-gh pr comment 102 --repo stands/Onboarding-API-Next --body "@coderabbitai review"
-gh pr comment 880 --repo stands/Onboarding-Manage-API --body "@coderabbitai review"
-gh pr comment 1224 --repo stands/Onboarding-Manage-Web --body "@coderabbitai review"
-gh pr comment 1459 --repo stands/Onboarding-Web --body "@coderabbitai review"
-```
+| リポジトリ | 指摘 | 対応 |
+| --- | --- | --- |
+| `Onboarding-API-Next` | なし | — |
+| `onboarding-manage-api` | なし | — |
+| `onboarding-manage-web` | 1件（Minor） | **見送り**（下記） |
+| `onboarding-web` | なし | — |
+
+#### 見送った指摘（manage-web）
+
+> PATCH 失敗時に選択値を復元してください。
+
+同ページの既存の設定項目すべてが同じ挙動（`changeShape` / `changeIsHidden` も値を書いてから
+保存し、失敗しても戻さない）。今回の項目だけ復元を入れると**同じ画面で片方だけ値が戻る**ことになり、
+かえって分かりにくい。全項目に入れるのは既存の保存フロー全体を変える話で本チケットのスコープを超える。
+
+**保存フロー全体の見直しは別途検討する**という判断。PR にその旨を返信済み。
+
+### 翌日以降の作業
+
+1. 各 PR を `release` へ squash merge（順序は「1. リリース順序と理由」のとおり）
+2. `release` → main / master の PR（タイトル `{YYYYMMDD} Release`）をマージコミットでマージ
+3. タグ発行（`1.33.0` / `5.109.0` / `7.104.0` / `6.11.0`）
+4. **`onboarding-web` の prod 配信JSをビルドして S3 へ手動アップロード**
 
 `onboarding-web` はパッケージを `^1.35.0` へ差し替え済み、拡張の manifest も採番済み（`902c4175`）。
-**残るのは prod 配信JSのビルドと S3 アップロードだけ**（マージ後に実施）。
+prod ビルドに新UIが入ることも確認済み。**残るのはアップロードだけ。**
 
 ## 2. 各リポジトリの手順
 

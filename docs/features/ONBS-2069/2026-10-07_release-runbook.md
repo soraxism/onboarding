@@ -48,6 +48,23 @@ git log --format='%h %an %s' origin/main..origin/release   # または origin/ma
 **1 と 5 の間が空いても実害はない。** その間は「設定できるが新UIは出ない」状態で、
 既存顧客は旧UIのまま影響を受けない（設定を持たないデータは `launcher` にフォールバックする）。
 
+## 1-2. 実際の進め方（2026-10-07 時点）
+
+**`Onboarding-AI-Chat` だけ先行してリリースする。** `onboarding-web` が参照する npm パッケージであり、
+これが正式公開されないと 5 が進まないため。
+
+| リポジトリ | feature → release の PR | release へのマージ | release → main/master | タグ |
+| --- | --- | --- | --- | --- |
+| `Onboarding-AI-Chat` | 作成する | **する** | **する** | **`1.35.0` を発行** |
+| 他4リポジトリ | 作成する | **しない（PR を開いたまま）** | しない | しない |
+
+他4つはレビューを通すところまで進め、**マージ可能になっても開いたままにする**。
+リリースは翌日以降にまとめて行う。
+
+| PR | 状態 |
+| --- | --- |
+| [Onboarding-AI-Chat#88](https://github.com/stands/Onboarding-AI-Chat/pull/88) | レビュー中 |
+
 ## 2. 各リポジトリの手順
 
 ### 2-1. 共通の流れ

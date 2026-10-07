@@ -425,3 +425,15 @@ trigger はキーを個別に列挙しているため、追加しないと配信
 | `onboarding-web` | 配信JS（`onboarding-init.js` / `onboarding-init-next.js`）のビルドと S3 への手動アップロード | 上記のパッケージ更新後 |
 
 `onboarding-web` のロジック変更は不要であることを確認済み。`getMountData()` が `trigger` を無加工で `mount()` に渡しているため、`mobile_ui_type` はそのまま届く。
+
+### `onboarding-web` の develop は dev 版のまま（意図的）
+
+dev 確認のため `1.35.0-dev.*` を参照しているが、**最新の dev 版（`20261007033807`）は
+`develop` へ反映していない**（コミット `f6399576` は feature ブランチに留めてある）。
+
+`develop` へ push すると Chrome ウェブストアへの自動申請が走り、`ext-version-bump` の
+再採番が要る。中身が同じ拡張を別バージョンで再申請するだけになるため、
+**本番リリース時に正式版 `1.35.0` へ差し替える際にまとめて対応する**（2026-10-07 判断）。
+
+dev 環境のエンドユーザー側は S3 の配信JSで動いており、そちらは最新のため確認に支障はない。
+ただし**この期間に他者が `develop` から `onboarding-web` をビルドすると古いライブラリが入る**。

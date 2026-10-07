@@ -61,9 +61,40 @@ git log --format='%h %an %s' origin/main..origin/release   # または origin/ma
 他4つはレビューを通すところまで進め、**マージ可能になっても開いたままにする**。
 リリースは翌日以降にまとめて行う。
 
-| PR | 状態 |
+| 順 | リポジトリ | PR（feature → release） | 状態 |
+| --- | --- | --- | --- |
+| 1 | `Onboarding-AI-Chat` | [#88](https://github.com/stands/Onboarding-AI-Chat/pull/88) | ✅ **リリース済み（`1.35.0`）** |
+| 2 | `Onboarding-API-Next` | [#102](https://github.com/stands/Onboarding-API-Next/pull/102) | 開いたまま（レビュー未） |
+| 3 | `onboarding-manage-api` | [#880](https://github.com/stands/Onboarding-Manage-API/pull/880) | 開いたまま（レビュー未） |
+| 4 | `onboarding-manage-web` | [#1224](https://github.com/stands/Onboarding-Manage-Web/pull/1224) | 開いたまま（レビュー未） |
+| 5 | `onboarding-web` | [#1459](https://github.com/stands/Onboarding-Web/pull/1459) | 開いたまま（レビュー未） |
+
+### 1 のリリース実績（2026-10-07）
+
+| 工程 | 結果 |
 | --- | --- |
-| [Onboarding-AI-Chat#88](https://github.com/stands/Onboarding-AI-Chat/pull/88) | レビュー中 |
+| #88 → `release`（squash） | `a70c931` |
+| [#89](https://github.com/stands/Onboarding-AI-Chat/pull/89) `release` → `main`（マージコミット） | `e570a02` |
+| タグ・リリースノート | [1.35.0](https://github.com/stands/Onboarding-AI-Chat/releases/tag/1.35.0) |
+| npm 公開 | `onboarding-ai-chat@1.35.0` |
+
+CodeRabbit の指摘は2件（どちらも safe-area）で対応済み。
+あわせて、つまみ（ハンドルバー）をボタンごと共通化するリファクタを入れている。
+
+### 2〜5 の残作業
+
+**レビューのトリガーがまだ。** `@coderabbitai review` を打つ必要がある。
+10/7 中に 4 回使っているため、**枠（5回/時）の回復を待ってから順に**打つこと。
+
+```bash
+gh pr comment 102 --repo stands/Onboarding-API-Next --body "@coderabbitai review"
+gh pr comment 880 --repo stands/Onboarding-Manage-API --body "@coderabbitai review"
+gh pr comment 1224 --repo stands/Onboarding-Manage-Web --body "@coderabbitai review"
+gh pr comment 1459 --repo stands/Onboarding-Web --body "@coderabbitai review"
+```
+
+`onboarding-web` はパッケージを `^1.35.0` へ差し替え済み、拡張の manifest も採番済み（`902c4175`）。
+**残るのは prod 配信JSのビルドと S3 アップロードだけ**（マージ後に実施）。
 
 ## 2. 各リポジトリの手順
 

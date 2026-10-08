@@ -107,7 +107,7 @@ INDEX `onb_float_group_id` (`onb_float_group_id`)
 
 - 検証タグ（PC / SP / 別パス）、本番タグとも 200、`access-control-allow-origin: *` を確認
 - レスポンス本文にツアー1件・ヒント3件を確認。`res_data.onb_floats` は `"[]"`
-  （ランチャーグループ未作成のため。想定どおり）
+  （フロートグループ未作成のため。想定どおり）
 - 本番ログの 1146 エラーは 2026-10-08 02:50:18 UTC（11:50:18 JST）を最後に停止
 
 ## 恒久対応
@@ -129,6 +129,6 @@ INDEX `onb_float_group_id` (`onb_float_group_id`)
 
 - アカウント発行ツールと管理API で、ツアー・ヒントの履歴テーブルの `created_by` の型が
   食い違っている（発行ツール: `varchar(10)` / 管理API: `int(10) unsigned`）。
-  今回追加したランチャー分は管理API側に合わせた
+  今回追加したフロート分は管理API側に合わせた
 - クライアントが設置したタグは、`ignition_url` が本番（`api.onboarding-app.io`）なのに
   custom-layer だけ dev（`dev-custom-layer.onboarding-app.io`）を指している。意図通りか要確認

@@ -183,18 +183,54 @@ prod の検証用プロダクトのうち **`pid=391`（リファクタ前）に
 リリースPRのタイトルは `20261008 Release_01` とした。ONBS-2079 は `mng-v1-chats-chat-id/` に
 触れていないため衝突なし。
 
+### 4・5 のリリース（2026-10-08）
+
+| 工程 | `onboarding-manage-web` | `onboarding-web` |
+| --- | --- | --- |
+| feature → `release`（squash） | [#1224](https://github.com/stands/Onboarding-Manage-Web/pull/1224) → `d548bc424` | [#1459](https://github.com/stands/Onboarding-Web/pull/1459) → `28cf1677` |
+| `release` → `master`（マージコミット） | [#1227](https://github.com/stands/Onboarding-Manage-Web/pull/1227) `20261008 Release_01` → `850632b33` | [#1460](https://github.com/stands/Onboarding-Web/pull/1460) `20261008 Release` → `7202ae4d` |
+| タグ | **[7.105.0](https://github.com/stands/Onboarding-Manage-Web/releases/tag/7.105.0)** | [6.11.0](https://github.com/stands/Onboarding-Web/releases/tag/6.11.0) |
+| デプロイ | Actions `Build and Deploy` | Actions `Preview自動申請（本番）` / `Viewer自動申請（本番）` とも success |
+
+**`onboarding-manage-web` のタグは手順書の `7.104.0` ではなく `7.105.0` になった。**
+`7.104.0` は同日 [#1225](https://github.com/stands/Onboarding-Manage-Web/pull/1225)（別件・イベント別集計）
+で発行済みだったため。`feature/` を含むためマイナー +1 で `7.105.0`。同日2回目なので
+リリースPRのタイトルは `20261008 Release_01` とした。
+
+拡張の manifest は prod も採番済みで、**ストアの現行版（preview 6.8.4 / viewer 3.8.5）より
+上であることを申請前に確認した**（`bump-version.mjs --dry-run`）。
+
+| manifest | 変更 |
+| --- | --- |
+| `preview_prod.json` | 6.8.4 → 6.9.0 |
+| `viewer_general_prod.json` | 3.8.5 → 3.9.0 |
+
 ### 残りの作業
 
-1. `onboarding-manage-web` [#1224](https://github.com/stands/Onboarding-Manage-Web/pull/1224) を `release` へ squash merge → `master` へマージ → タグ `7.104.0`
-2. `onboarding-web` [#1459](https://github.com/stands/Onboarding-Web/pull/1459) を `release` へ squash merge → `master` へマージ → タグ `6.11.0`
-3. **`onboarding-web` の prod 配信JSをビルドして S3 へ手動アップロード**
-4. prod での確認（「3. リリース後の確認」）
+1. **prod 配信JSを S3 へアップロード（実施者）**。ビルドは完了している
 
-`onboarding-web` はパッケージを `^1.35.0` へ差し替え済み、拡張の manifest も採番済み（`902c4175`）。
-prod ビルドに新UIが入ることも確認済み。**残るのはアップロードだけ。**
+   | ファイル | アップロード先 |
+   | --- | --- |
+   | `build/prod/s3/onboarding-init.js` | (S3) `assets.onboarding-app.io/js/` |
+   | `build/prod/s3/onboarding-init-next.js` | 同上 |
 
-**`release` ブランチは PR 作成の直前に必ず取り直すこと。** 他の人のリリース分が
-入っていたら、一緒に出してよいか確認する。
+   **2ファイルとも上げること。** 顧客は `use_refactored_onboarding_init` フラグで
+   新旧どちらかを読むため、片方だけだと一部にしか届かない。
+   **アップロード後は CDN キャッシュの削除も行う**（ONBS-1991 の prod 検証と同じ）。
+
+   ```bash
+   # リリース済み master から作り直す場合
+   git -C onboarding-web worktree add --detach $WT origin/master
+   ln -sf {リポジトリ}/.npmrc $WT/.npmrc   # GitHub Packages の認証に要る
+   cd $WT && npm ci && npx webpack --config webpack.prod.js
+   ```
+
+   `npm ci` は本体の `node_modules` を借りずに独立で行う。**借りると古い
+   `@stands/onboarding-ai-chat`（1.34.0）が混ざり、新UIの入っていないJSができる。**
+   出力に `floating__chip` / `is-bottom-sheet` / `mobile_ui_type` が含まれること、
+   `v2api.onboarding-app.io` を向いていることを確認した。
+
+2. prod での確認（「3. リリース後の確認」の #1・#2・#5）
 
 ## 2. 各リポジトリの手順
 

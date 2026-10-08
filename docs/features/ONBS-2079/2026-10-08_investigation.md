@@ -81,6 +81,20 @@ Logs Insights で直近2日の発生を集計したところ、該当エラー�
 `create_product()` 以降は共通経路。したがって新規アカウント発行・既存アカウントへの
 プロダクト追加のどちらも同じように漏れていた。
 
+### フラグの扱い（影響がいつ出るか）
+
+フロートの出し分けは専用フラグではなく `use_refactored_onboarding_init` を見ている
+（`Onboarding-API-Next` の `app/endpoints/onboarding_init.py`）。発行ツールの
+`insert_features_for_new_product` はこのフラグを新規プロダクトに**必ず付与する**
+（付与に失敗すると例外にしている）。
+
+つまり**発行ツールで作られたプロダクトは、作成時点からフロートの取得対象になる**。
+履歴テーブルが無ければ、検証環境タグを使ったその時点で 500 になる。
+「後からフラグを有効化したときに初めて壊れる」わけではない。
+
+テーブルが無いプロダクトの洗い出しには
+[2026-10-08_missing-history-tables.sql](2026-10-08_missing-history-tables.sql) を使う。
+
 削除側も同様で、`tools/products/handler.py` の `drop_histories` はツアー・ヒントしか
 DROP しないため、プロダクト解約時に `onb_float_histories_*` が残存する状態だった。
 

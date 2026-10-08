@@ -4,53 +4,39 @@
 --   USE onboarding_db;
 --
 -- 参照のみ。更新は行わない。
+--
+-- 履歴テーブルは全プロダクトに存在するのが本来の状態で、無いプロダクトはすべて
+-- バックフィルの対象になる。フィーチャーフラグの有効・無効では絞らない。
 
 -- ---------------------------------------------------------------------------
 -- 1. フロート履歴テーブルが無いプロダクト（本題）
---
--- refactored_init が enabled のものは、検証環境タグ（display_mode=preview）や
--- 管理画面プレビューでフロートを引いた時点で配信APIが 500 になる。こちらが優先。
--- フロートの出し分けは専用フラグではなく use_refactored_onboarding_init を見ている。
 -- ---------------------------------------------------------------------------
 SELECT
     p.account_id,
-    p.id                AS product_id,
-    p.name              AS product_name,
-    p.code              AS product_code,
-    p.created_at,
-    CASE WHEN pf.product_id IS NULL THEN 'disabled' ELSE 'enabled' END AS refactored_init
+    p.id   AS product_id,
+    p.name AS product_name,
+    p.code AS product_code,
+    p.created_at
 FROM products p
 LEFT JOIN information_schema.TABLES t
        ON t.TABLE_SCHEMA = DATABASE()
       AND t.TABLE_NAME   = CONCAT('onb_float_histories_', p.code)
-LEFT JOIN features f
-       ON f.code = 'use_refactored_onboarding_init'
-LEFT JOIN products_features pf
-       ON pf.feature_id = f.feature_id
-      AND pf.product_id = p.id
 WHERE p.is_deleted = 0
   AND t.TABLE_NAME IS NULL
-ORDER BY refactored_init DESC, p.id;
+ORDER BY p.id;
 
 
 -- ---------------------------------------------------------------------------
--- 2. 件数サマリ（影響規模の把握）
+-- 2. 件数（影響規模の把握）
 -- ---------------------------------------------------------------------------
 SELECT
-    CASE WHEN pf.product_id IS NULL THEN 'disabled' ELSE 'enabled' END AS refactored_init,
-    COUNT(*) AS products_without_table
+    COUNT(*) AS products_without_onb_float_histories
 FROM products p
 LEFT JOIN information_schema.TABLES t
        ON t.TABLE_SCHEMA = DATABASE()
       AND t.TABLE_NAME   = CONCAT('onb_float_histories_', p.code)
-LEFT JOIN features f
-       ON f.code = 'use_refactored_onboarding_init'
-LEFT JOIN products_features pf
-       ON pf.feature_id = f.feature_id
-      AND pf.product_id = p.id
 WHERE p.is_deleted = 0
-  AND t.TABLE_NAME IS NULL
-GROUP BY refactored_init;
+  AND t.TABLE_NAME IS NULL;
 
 
 -- ---------------------------------------------------------------------------
@@ -62,8 +48,7 @@ SELECT
     p.code AS product_code,
     CASE WHEN tt.TABLE_NAME IS NULL THEN 'MISSING' ELSE 'ok' END AS tour_histories,
     CASE WHEN th.TABLE_NAME IS NULL THEN 'MISSING' ELSE 'ok' END AS hint_histories,
-    CASE WHEN tf.TABLE_NAME IS NULL THEN 'MISSING' ELSE 'ok' END AS onb_float_histories,
-    CASE WHEN pf.product_id IS NULL THEN 'disabled' ELSE 'enabled' END AS refactored_init
+    CASE WHEN tf.TABLE_NAME IS NULL THEN 'MISSING' ELSE 'ok' END AS onb_float_histories
 FROM products p
 LEFT JOIN information_schema.TABLES tt
        ON tt.TABLE_SCHEMA = DATABASE() AND tt.TABLE_NAME = CONCAT('tour_histories_', p.code)
@@ -71,10 +56,6 @@ LEFT JOIN information_schema.TABLES th
        ON th.TABLE_SCHEMA = DATABASE() AND th.TABLE_NAME = CONCAT('hint_histories_', p.code)
 LEFT JOIN information_schema.TABLES tf
        ON tf.TABLE_SCHEMA = DATABASE() AND tf.TABLE_NAME = CONCAT('onb_float_histories_', p.code)
-LEFT JOIN features f
-       ON f.code = 'use_refactored_onboarding_init'
-LEFT JOIN products_features pf
-       ON pf.feature_id = f.feature_id AND pf.product_id = p.id
 WHERE p.is_deleted = 0
   AND (tt.TABLE_NAME IS NULL OR th.TABLE_NAME IS NULL OR tf.TABLE_NAME IS NULL)
 ORDER BY p.id;
@@ -102,13 +83,6 @@ FROM products p
 LEFT JOIN information_schema.TABLES t
        ON t.TABLE_SCHEMA = DATABASE()
       AND t.TABLE_NAME   = CONCAT('onb_float_histories_', p.code)
-LEFT JOIN features f
-       ON f.code = 'use_refactored_onboarding_init'
-LEFT JOIN products_features pf
-       ON pf.feature_id = f.feature_id
-      AND pf.product_id = p.id
 WHERE p.is_deleted = 0
   AND t.TABLE_NAME IS NULL
-  -- 影響が出ているものだけ先に流したい場合はこの行を有効にする
-  -- AND pf.product_id IS NOT NULL
 ORDER BY p.id;

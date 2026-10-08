@@ -154,6 +154,29 @@ rebase せずに実行している。
 | タグ | [1.33.0](https://github.com/stands/Onboarding-API-Next/releases/tag/1.33.0) | [5.109.0](https://github.com/stands/Onboarding-Manage-API/releases/tag/5.109.0) |
 | デプロイ経路 | AWS CodePipeline（GitHub Actions には出ない） | GitHub Actions `Build and Deploy (production)` |
 
+#### prod 確認（2026-10-08）
+
+```bash
+node docs/testing/scripts/onbs-2069-prod-check.mjs --bust {毎回変える文字列}
+```
+
+| # | 確認内容 | 結果 |
+| --- | --- | --- |
+| 3 | 配信レスポンスに `mobile_ui_type` が載る | ✅ `"チャットで相談" = "launcher"` |
+| 4 | 旧UIのチャットが従来どおり動く（デグレ確認） | ✅ マウント・ランチャー表示・押下で開くまで確認 |
+
+**#3 の確認では Cloudflare のキャッシュに注意する。** デモサイトをそのまま開くと
+`cf-cache-status: HIT` の古い内容が返り（確認時は `age: 98025` ≒ 27時間前）、
+**API を直しても反映されていないように見える**。配信APIのリクエストにだけ一意なクエリを
+足してキャッシュを外すこと（上記スクリプトはそれを行う）。
+
+キャッシュは管理画面からの保存で `pcode:{product_code}` タグのパージが走る
+（manage-api の `invalidate_product_cache`）。**API のデプロイだけでは飛ばない**ため、
+既存のキャッシュは失効するまで旧い形のままになる。今回は挙動を変えない変更なので実害はない。
+
+prod の検証用プロダクトのうち **`pid=391`（リファクタ前）には AI チャットが1件も無い**ため、
+確認は `pid=392` のみで行った。
+
 **`onboarding-manage-api` の直前タグは手順書作成時の `5.108.4` から `5.108.5` に動いていた**
 （同日 [#882](https://github.com/stands/Onboarding-Manage-API/pull/882) / ONBS-2079 のリリース）。
 `feature/` を含むためマイナー +1 で `5.109.0` のまま変わらず。同日2回目のため
@@ -293,6 +316,14 @@ node docs/testing/scripts/check-access.mjs --env prod
 | 3 | 配信レスポンスに `mobile_ui_type` が載る |
 | 4 | **旧UIのチャットが従来どおり動く**（デグレ確認・最優先） |
 | 5 | 新UIを設定したチャットでフローティングが出る（スマートフォン） |
+
+**#3 と #4 はバックエンド先行リリースの時点で確認済み**（2026-10-08・上記「prod 確認」）。
+残るは #1・#2・#5 で、`onboarding-manage-web` と `onboarding-web` のリリース後に行う。
+
+```bash
+# 配信とデグレの確認（読み取りのみ・Cloudflare のキャッシュを外す）
+node docs/testing/scripts/onbs-2069-prod-check.mjs --bust {毎回変える文字列}
+```
 
 ## 4. 切り戻し
 

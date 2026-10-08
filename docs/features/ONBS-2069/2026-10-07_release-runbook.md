@@ -64,8 +64,8 @@ git log --format='%h %an %s' origin/main..origin/release   # または origin/ma
 | 順 | リポジトリ | PR（feature → release） | 状態 |
 | --- | --- | --- | --- |
 | 1 | `Onboarding-AI-Chat` | [#88](https://github.com/stands/Onboarding-AI-Chat/pull/88) | ✅ **リリース済み（`1.35.0`）** |
-| 2 | `Onboarding-API-Next` | [#102](https://github.com/stands/Onboarding-API-Next/pull/102) | ✅ レビュー通過（指摘なし）・開いたまま |
-| 3 | `onboarding-manage-api` | [#880](https://github.com/stands/Onboarding-Manage-API/pull/880) | ✅ レビュー通過（指摘なし）・開いたまま |
+| 2 | `Onboarding-API-Next` | [#102](https://github.com/stands/Onboarding-API-Next/pull/102) | ✅ **リリース済み（`1.33.0` / 2026-10-08）** |
+| 3 | `onboarding-manage-api` | [#880](https://github.com/stands/Onboarding-Manage-API/pull/880) | ✅ **リリース済み（`5.109.0` / 2026-10-08）** |
 | 4 | `onboarding-manage-web` | [#1224](https://github.com/stands/Onboarding-Manage-Web/pull/1224) | ✅ レビュー通過（指摘1件・見送り）・開いたまま |
 | 5 | `onboarding-web` | [#1459](https://github.com/stands/Onboarding-Web/pull/1459) | ✅ レビュー通過（指摘なし）・開いたまま |
 
@@ -122,15 +122,56 @@ rebase せずに実行している。
 今回の「スマートフォンでの表示形式」も項目化していない。**既存の設定項目（デザイン・カラー・
 表示位置等）に倣い、追加しない判断**（2026-10-08）。ページ全体の項目整備は別途検討する。
 
-### 翌日以降の作業
+### 2・3 の先行リリース（2026-10-08）
 
-1. 各 PR を `release` へ squash merge（順序は「1. リリース順序と理由」のとおり）
-2. `release` → main / master の PR（タイトル `{YYYYMMDD} Release`）をマージコミットでマージ
-3. タグ発行（`1.33.0` / `5.109.0` / `7.104.0` / `6.11.0`）
-4. **`onboarding-web` の prod 配信JSをビルドして S3 へ手動アップロード**
+**バックエンド2本（`Onboarding-API-Next` / `onboarding-manage-api`）を先行してリリースした。**
+デプロイに時間がかかるため、管理画面・配信JSより前に出しておく判断。
+
+#### 先行してよいかの事前確認
+
+どちらも**エンドユーザー・管理画面の挙動を変えない no-op リリース**であることを実コードで確認した。
+後続（4・5）が何日空いても害はない。
+
+| 確認項目 | 結果 |
+| --- | --- |
+| prod 配信JSが抱える AIチャットlib | `package-lock.json` で **1.34.0** に固定 |
+| 旧lib が未知キーを弾くか | **弾かない**。`z.object()` のみで `.strict()` なし（1.30.0 / 1.32.0 / 1.34.0 とも0件）→ zod が黙って捨てる |
+| `onboarding-web` 側の扱い | `getMountData()` は `trigger` を分割代入でそのまま渡すだけ。キー列挙も検証もしない |
+| 配信データのキャッシュ | `cruds/chats.py` にキャッシュなし（Redis に載るのは product_info / targets / S3のJSON）→ 古い形との混在が起きない |
+| 既存データの値 | `mobile_ui_type` を持たないため全件 `launcher` にフォールバック。見た目の変化ゼロ |
+| 旧管理画面からの PATCH | `validate_patch_trigger.json` の追加は `required: false`。今までどおり通る |
+| 既存値を保持する防御コード | `data` に `mobile_ui_type` がある場合だけ発火。prod はまだ誰も設定していないので動かない（4 のリリース後に効く） |
+| 補完の位置 | バリデーション後・DB書き込み直前。検証には影響しない（`shortcuts` / ONBS-1689 と同じ形） |
+
+2 と 3 の間に順序依存はない。どちらを先に出してもよい。
+
+#### 実績
+
+| 工程 | `Onboarding-API-Next` | `onboarding-manage-api` |
+| --- | --- | --- |
+| feature → `release`（squash） | [#102](https://github.com/stands/Onboarding-API-Next/pull/102) → `2be8259` | [#880](https://github.com/stands/Onboarding-Manage-API/pull/880) → `f03b28b2` |
+| `release` → `main`（マージコミット） | [#103](https://github.com/stands/Onboarding-API-Next/pull/103) `20261008 Release` → `3ba9600` | [#883](https://github.com/stands/Onboarding-Manage-API/pull/883) `20261008 Release_01` → `ea2319a8` |
+| タグ | [1.33.0](https://github.com/stands/Onboarding-API-Next/releases/tag/1.33.0) | [5.109.0](https://github.com/stands/Onboarding-Manage-API/releases/tag/5.109.0) |
+| デプロイ経路 | AWS CodePipeline（GitHub Actions には出ない） | GitHub Actions `Build and Deploy (production)` |
+
+**`onboarding-manage-api` の直前タグは手順書作成時の `5.108.4` から `5.108.5` に動いていた**
+（同日 [#882](https://github.com/stands/Onboarding-Manage-API/pull/882) / ONBS-2079 のリリース）。
+`feature/` を含むためマイナー +1 で `5.109.0` のまま変わらず。同日2回目のため
+リリースPRのタイトルは `20261008 Release_01` とした。ONBS-2079 は `mng-v1-chats-chat-id/` に
+触れていないため衝突なし。
+
+### 残りの作業
+
+1. `onboarding-manage-web` [#1224](https://github.com/stands/Onboarding-Manage-Web/pull/1224) を `release` へ squash merge → `master` へマージ → タグ `7.104.0`
+2. `onboarding-web` [#1459](https://github.com/stands/Onboarding-Web/pull/1459) を `release` へ squash merge → `master` へマージ → タグ `6.11.0`
+3. **`onboarding-web` の prod 配信JSをビルドして S3 へ手動アップロード**
+4. prod での確認（「3. リリース後の確認」）
 
 `onboarding-web` はパッケージを `^1.35.0` へ差し替え済み、拡張の manifest も採番済み（`902c4175`）。
 prod ビルドに新UIが入ることも確認済み。**残るのはアップロードだけ。**
+
+**`release` ブランチは PR 作成の直前に必ず取り直すこと。** 他の人のリリース分が
+入っていたら、一緒に出してよいか確認する。
 
 ## 2. 各リポジトリの手順
 

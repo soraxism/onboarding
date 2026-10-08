@@ -230,7 +230,7 @@ prod の検証用プロダクトのうち **`pid=391`（リファクタ前）に
    出力に `floating__chip` / `is-bottom-sheet` / `mobile_ui_type` が含まれること、
    `v2api.onboarding-app.io` を向いていることを確認した。
 
-2. prod での確認（「3. リリース後の確認」の #1・#2・#5）
+2. ~~prod での確認~~ → 完了（[2026-10-08_prod-test-result.md](./2026-10-08_prod-test-result.md)）
 
 ## 2. 各リポジトリの手順
 
@@ -353,12 +353,20 @@ node docs/testing/scripts/check-access.mjs --env prod
 | 4 | **旧UIのチャットが従来どおり動く**（デグレ確認・最優先） |
 | 5 | 新UIを設定したチャットでフローティングが出る（スマートフォン） |
 
-**#3 と #4 はバックエンド先行リリースの時点で確認済み**（2026-10-08・上記「prod 確認」）。
-残るは #1・#2・#5 で、`onboarding-manage-web` と `onboarding-web` のリリース後に行う。
+**5項目すべて確認済み**（2026-10-08）。結果は
+[2026-10-08_prod-test-result.md](./2026-10-08_prod-test-result.md)。
 
 ```bash
 # 配信とデグレの確認（読み取りのみ・Cloudflare のキャッシュを外す）
 node docs/testing/scripts/onbs-2069-prod-check.mjs --bust {毎回変える文字列}
+```
+
+**配信JSを差し替えたら、配信エンドポイントのキャッシュを prefix でパージすること。**
+`assets.onboarding-app.io/js/*.js` をパージしても意味がない（エンドユーザーのページは
+そこを直接読まず、`api.onboarding-app.io/v1/onboarding-init` が返す JS を使う）。
+
+```bash
+cd onboarding-web && npm run purge_cache_prod   # v1 側。v2api も必要なら prefix に足す
 ```
 
 ## 4. 切り戻し

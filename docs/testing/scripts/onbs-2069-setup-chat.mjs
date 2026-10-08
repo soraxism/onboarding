@@ -4,10 +4,11 @@
  * 新UI（下部フローティング）を設定したチャットを 1 件作り、初回選択肢も入れて公開する。
  * 確認が終わったら `--cleanup` で消す。
  *
- *   node docs/testing/scripts/onbs-2069-setup-chat.mjs [--product next|legacy] [--headed]
- *   node docs/testing/scripts/onbs-2069-setup-chat.mjs --cleanup
+ *   node docs/testing/scripts/onbs-2069-setup-chat.mjs [--env dev|prod] [--product next|legacy] [--headed]
+ *   node docs/testing/scripts/onbs-2069-setup-chat.mjs [--env dev|prod] --cleanup [--include-unnamed]
  *
- * dev は他の人も使うため、名前は `[自動検証] ` で始める（運用は docs/testing/README.md）。
+ * dev / prod とも他の人も使うため、名前は `[自動検証] ` で始める（運用は docs/testing/README.md）。
+ * **prod は本番。** 触ってよいのは検証用プロダクトの中だけで、作ったものは確認後に必ず消す。
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -21,7 +22,9 @@ import {
   buildTourName,
 } from './lib/manage.mjs'
 
-const envKey = 'dev'
+const envKey = process.argv.includes('--env')
+  ? process.argv[process.argv.indexOf('--env') + 1]
+  : 'dev'
 const headless = !process.argv.includes('--headed')
 const cleanup = process.argv.includes('--cleanup')
 const productKey = process.argv.includes('--product')
@@ -66,15 +69,27 @@ const gotoWithProduct = async (page, pathname) => {
   await page.waitForTimeout(2500)
 }
 
-/** 一覧から名前で行を探し、その行のチェックボックスを入れる */
+/**
+ * 一覧から名前で行を探し、その行のチェックボックスを入れる。
+ *
+ * Why: 入ったかどうかを必ず確かめる。入っていないと削除ボタンが disabled のままで、
+ * 「要素が enabled にならない」というタイムアウトになり、原因が分かりにくい。
+ */
 const checkRowByName = async (page, name) => {
   const row = page.locator('li.listDataRow', { hasText: name }).first()
   if ((await row.count()) === 0) return false
+  const input = row.locator('input[type="checkbox"]').first()
   // チェックボックスは見た目用の要素に隠れているため、包んでいる label を押す
   const label = row.locator('label').first()
   if (await label.isVisible().catch(() => false)) await label.click()
-  else await row.locator('input[type="checkbox"]').first().check({ force: true })
-  return true
+  await page.waitForTimeout(500)
+  if (!(await input.isChecked().catch(() => false))) {
+    await input.check({ force: true })
+    await page.waitForTimeout(500)
+  }
+  const checked = await input.isChecked().catch(() => false)
+  if (!checked) log(`  チェックを入れられない: ${name}`)
+  return checked
 }
 
 /**
@@ -117,14 +132,22 @@ const unpublishByName = async (page, name) => {
 
 const doCleanup = async (page) => {
   await gotoWithProduct(page, '/ai/chats')
-  // Why: 名前を付ける前に失敗した分は「名称未設定」で残る。取り残さないよう対象に含める
-  //      （操作してよいのは検証用プロダクトの中だけ、という前提で消す）
+  // Why: 既定では自分が作ったもの（`[自動検証] ONBS-2069`）だけを消す。
+  //      名前を付ける前に失敗した分は「名称未設定」で残るが、**これは自分の残骸とは限らない**。
+  //      prod の検証用プロダクトには以前から「名称未設定」のチャットが置かれており、
+  //      一緒に消すと他人の資産を壊す。拾いたいときだけ `--include-unnamed` を付ける。
+  const includeUnnamed = process.argv.includes('--include-unnamed')
+  if (includeUnnamed && envKey === 'prod') {
+    throw new Error('--include-unnamed は prod では使えない（既存の「名称未設定」を巻き込むため）')
+  }
   const targets = await page
     .locator('.listDataColumn')
-    .evaluateAll((nodes) =>
-      nodes
-        .map((n) => (n.textContent ?? '').trim())
-        .filter((t) => t.startsWith('[自動検証] ONBS-2069') || t === '名称未設定')
+    .evaluateAll(
+      (nodes, withUnnamed) =>
+        nodes
+          .map((n) => (n.textContent ?? '').trim())
+          .filter((t) => t.startsWith('[自動検証] ONBS-2069') || (withUnnamed && t === '名称未設定')),
+      includeUnnamed
     )
   const unique = [...new Set(targets)]
   if (unique.length === 0) {
@@ -139,9 +162,17 @@ const doCleanup = async (page) => {
     await gotoWithProduct(page, '/ai/chats')
   }
 
-  for (const name of unique) await checkRowByName(page, name)
+  let checkedAny = false
+  for (const name of unique) {
+    if (await checkRowByName(page, name)) checkedAny = true
+  }
+  if (!checkedAny) {
+    log('チェックを入れられた対象が無いので削除しない')
+    return
+  }
 
-  await page.getByRole('button', { name: /削除/ }).click()
+  // Why: 一覧には複数の「削除」が出ることがあるため first() で絞る
+  await page.getByRole('button', { name: /削除/ }).first().click()
   await page.waitForTimeout(1200)
   // 確認ダイアログ
   const confirm = page.getByRole('button', { name: /削除する|はい|OK/ }).last()

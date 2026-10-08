@@ -117,8 +117,8 @@ const main = async () => {
     )
     const trigger = await peek(page, '.trigger')
     record(trigger?.visible === true, 'ランチャーが従来どおり表示される', trigger?.text ?? '出ない')
-    // prod の配信JSは未更新（旧ライブラリ）なので、新UIは出ないのが正しい
-    record((await peek(page, '.floating')) === null, 'フローティングは出ない（配信JSが未更新のため）')
+    // 表示形式が launcher のチャットでは、配信JSが新しくてもフローティングは出ないのが正しい
+    record((await peek(page, '.floating')) === null, 'launcher 設定ではフローティングが出ない')
     await page.screenshot({ path: path.join(outDir, 'prod-01-launcher.png') })
 
     await tap(page, '.trigger')

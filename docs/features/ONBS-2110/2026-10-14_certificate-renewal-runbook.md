@@ -17,7 +17,35 @@ Cloudflare の SSL/TLS モードが **「フル」**（オリジンの証明書�
 
 ### 原因（2026-10-14 特定）
 
-ホストの certbot が **`standalone` モード**で設定されていた。
+**原因は 2 つあり、別々の問題だった。**
+
+#### 原因 1: Dify 側の certbot に自動更新が無い（本質）
+
+nginx が読む証明書を管理しているのは Dify の certbot で、**設定自体は正しい**。
+
+```ini
+# volumes/certbot/conf/renewal/dify-stands.com.conf
+authenticator = webroot
+webroot_path = /var/www/html
+key_type = ecdsa
+```
+
+しかし certbot サービスは `profiles: [certbot]` かつ `command: tail -f /dev/null` で、
+**人が手で実行しない限り何もしない**。
+
+2025-10-06 に手動で取得したきり一度も更新されず、**90 日後の 2026-01-04 に自然失効**した。
+**firewall は無関係。単に自動更新が仕込まれていなかっただけ。**
+
+> 当初「Cloudflare 限定の許可ルールが HTTP-01 チャレンジを阻害した」と推測したが、
+> これは誤りだった。証明書の発行日と `update-cf-ipset.sh` の設置日が同日だったことによる
+> 見かけ上の相関にすぎない。
+
+**したがって本対応で最も重要なのは、証明書の取り直しではなく cron の設定（手順 8）。**
+取り直しても自動化しなければ 90 日後に同じ状況が再発する。
+
+#### 原因 2: ホスト側の certbot が standalone で失敗し続けている
+
+こちらは nginx が読まない証明書ストアを管理している別系統の設定。
 
 ```ini
 # /etc/letsencrypt/renewal/dify-stands.com.conf
@@ -34,6 +62,8 @@ because it is already in use by another process on this system (such as a web se
 
 `certbot.timer` は 1 日 2 回動いており、**失敗のたびに秘密鍵と CSR だけが生成され続けていた**。
 その結果 `/etc/letsencrypt/csr`（28KB）と `keys`（24KB）が肥大している。
+
+この系統は nginx の証明書とは無関係なので、**停止するだけでよい**（手順 7）。
 
 ### 証明書ストアが 2 つある
 
@@ -208,15 +238,22 @@ systemctl is-enabled certbot.timer     # → disabled
 
 **`/etc/letsencrypt` はまだ削除しない。** 切り戻しの材料として当面残す。
 
-### 8. 自動更新を仕込む
+### 8. 自動更新を仕込む【本対応の要】
 
-Dify の certbot コンテナは常駐しない（`tail -f /dev/null` で待機するだけで、
-更新ジョブは持たない）。**cron で定期実行する。**
+**ここを忘れると 90 日後に同じ状況が再発する。** 今回の失効の本質はこれが無かったこと。
+
+Dify の certbot コンテナは `tail -f /dev/null` で待機するだけで更新ジョブを持たない。
+**cron で定期実行する。**
+
+`update-cert.template.txt` に `--force-renewal` が含まれていないため、
+**期限が近いときだけ実際に更新される**。毎日回しても Let's Encrypt の
+重複証明書制限（週 5 回）には当たらない。
 
 ```bash
 sudo tee /etc/cron.d/dify-certbot-renew > /dev/null <<'EOF'
-# Dify のオリジン証明書を毎月1日・15日の03:30に更新する
-30 3 1,15 * * root cd /root/dify/docker && /usr/bin/docker compose --profile certbot run --rm certbot /bin/sh /update-cert.sh >> /var/log/dify-certbot-renew.log 2>&1 && /usr/bin/docker compose exec -T nginx nginx -s reload >> /var/log/dify-certbot-renew.log 2>&1
+# Dify のオリジン証明書を毎日03:30に点検・更新する
+# --force-renewal を使わないため、期限が近いときだけ実際に更新される
+30 3 * * * root cd /root/dify/docker && /usr/bin/docker compose --profile certbot run --rm certbot /bin/sh /update-cert.sh >> /var/log/dify-certbot-renew.log 2>&1 && /usr/bin/docker compose exec -T nginx nginx -s reload >> /var/log/dify-certbot-renew.log 2>&1
 EOF
 ```
 
@@ -224,9 +261,22 @@ EOF
 sudo cat /etc/cron.d/dify-certbot-renew
 ```
 
-> **`update-cert.sh` が `--force-renewal` を含む場合は頻度に注意。**
-> Let's Encrypt の重複証明書は **1週間に5回まで**。
-> 月2回なら余裕があるが、`--force-renewal` 付きで毎日回すと枠を使い切る。
+> **`update-cert.sh` を書き換えて `--force-renewal` を足す場合は頻度を必ず下げること。**
+> Let's Encrypt の重複証明書は **1 週間に 5 回まで**。
+> `--force-renewal` 付きで毎日回すと枠を使い切り、**本当に必要なときに取得できなくなる**。
+
+設定後、ログの出力先を作っておく。
+
+```bash
+sudo touch /var/log/dify-certbot-renew.log
+sudo chmod 640 /var/log/dify-certbot-renew.log
+```
+
+翌日以降、実際に動いたか確認する。
+
+```bash
+sudo tail -20 /var/log/dify-certbot-renew.log
+```
 
 ### 9. 掃除（任意・後日でよい）
 

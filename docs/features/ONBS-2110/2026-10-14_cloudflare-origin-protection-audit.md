@@ -323,7 +323,7 @@ IP 直叩きという攻撃面自体が消滅する。ただし Dify の配置�
 > 手順と詳細は [2026-10-14_certificate-renewal-runbook.md](./2026-10-14_certificate-renewal-runbook.md)。
 >
 > **作業中に Cloudflare の WAF カスタムルールが ACME チャレンジを 403 でブロックしている
-> ことが判明し、Skip ルール `allow-acme-challenge` を追加した。
+> ことが判明し、Skip ルール `証明書更新のACME許可` を追加した。
 > このルールは消すと証明書を更新できなくなる。**
 
 

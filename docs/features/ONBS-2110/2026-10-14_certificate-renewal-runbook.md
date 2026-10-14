@@ -18,18 +18,18 @@
 | 既存の防御 | 秘密ヘッダ検証・iptables ルールとも**維持**（403 / 直叩きタイムアウトを確認） |
 
 **作業中に Cloudflare の WAF カスタムルールが ACME チャレンジを 403 でブロックしていることが判明し、
-Skip ルール `allow-acme-challenge` を追加した**（詳細は下記「Cloudflare 側の例外ルール」）。
+Skip ルール `証明書更新のACME許可` を追加した**（詳細は下記「Cloudflare 側の例外ルール」）。
 
 ---
 
 ## 【重要】Cloudflare 側の例外ルール
 
-**`allow-acme-challenge` は証明書更新のために意図的に開けた穴。消すと更新できなくなる。**
+**`証明書更新のACME許可` は証明書更新のために意図的に開けた穴。消すと更新できなくなる。**
 
 | 項目 | 内容 |
 | --- | --- |
 | 場所 | Cloudflare → `dify-stands.com` → セキュリティ → WAF → カスタムルール |
-| ルール名 | `allow-acme-challenge` |
+| ルール名 | `証明書更新のACME許可` |
 | 式 | `starts_with(http.request.uri.path, "/.well-known/acme-challenge/")` |
 | アクション | スキップ → 残りのカスタムルール |
 | 優先順位 | **最上位**（ブロックルールより上） |

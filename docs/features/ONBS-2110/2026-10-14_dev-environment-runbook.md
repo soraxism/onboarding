@@ -121,7 +121,7 @@ Cloudflare の SSL/TLS モードが **「フル」**（オリジンの証明書�
 
 | 項目 | 状況 |
 | --- | --- |
-| Cloudflare の ACME 例外ルール | **設定済み。** `allow-acme-challenge` はゾーン全体・パス指定のため `dev.dify-stands.com` にも効く |
+| Cloudflare の ACME 例外ルール | **設定済み。** `証明書更新のACME許可` はゾーン全体・パス指定のため `dev.dify-stands.com` にも効く |
 | Transform Rule | **設定済み。** `X-Origin-Auth` は既に dev 宛にも付与されている |
 | 既知の落とし穴 | `map_hash_bucket_size` / ユニットファイルへのコマンド混入 / ルール伝播待ち は本番で把握済み |
 

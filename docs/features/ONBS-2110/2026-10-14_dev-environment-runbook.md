@@ -1,9 +1,35 @@
 # dev 環境（onb-dify-dev）の対応手順
 
+**ステータス: 2026-10-14 対応完了**
+
 作成日: 2026-10-14
 対象: `onb-dify-dev`（`210.131.217.130`）/ `dev.dify-stands.com`
 前提: 本番側の対応（[調査結果](./2026-10-14_cloudflare-origin-protection-audit.md) /
 [証明書手順](./2026-10-14_certificate-renewal-runbook.md)）
+
+---
+
+## 実施結果（2026-10-14）
+
+| 課題 | 結果 |
+| --- | --- |
+| 1. 証明書のドメイン不一致と失効 | **完了。** `CN = dev.dify-stands.com` / 2027-01-12 まで有効 |
+| 2. 証明書の自動更新が無い | **完了。** `/etc/cron.d/dify-cert-renew`（毎日 04:00） |
+| 3. ホストの certbot が有効のまま | **完了。** `certbot.timer` を `disabled` |
+| 4. 秘密ヘッダ検証が未導入 | **完了。** ヘッダ無しで 403 |
+| 5. `docker-user-fw.service` の作り | **完了。** 安全装置・順序指定・`-i ens3` を追加 |
+| 6. `update-cf-ipset` の cron が空（追加発見） | **完了。** 毎日 05:00 |
+
+**本番ゾーンの SSL/TLS モードを「フル（厳格）」へ切り替え済み**（同日実施）。
+
+### 作業中に判明した追加の問題
+
+| 事象 | 内容 |
+| --- | --- |
+| **`CERTBOT_EMAIL` がプレースホルダ** | `your_email@example.com` のままで、**Let's Encrypt の失効警告メールが誰にも届いていなかった**。失効が 8 か月気づかれなかった一因。実アドレスに修正し `certbot update_account` も実施 |
+| **`/root/ssl_update.sh` による既存の日次ジョブ** | `/etc/cron.d/certbot`（パッケージのファイル）を流用して毎日 02:00 に実行されていた。**`nginx -s reload` に `-T` が無く cron 環境では失敗する**作りだった。`dify-cert-renew` に一本化し、コメントアウトして退避 |
+| **`docker compose restart` では `.env` が反映されない** | 環境変数はコンテナ作成時に固定されるため、`up -d --force-recreate` が必要 |
+| **フォールバック先が空** | `nginx/ssl/` に `.gitkeep` のみ。証明書取得前に nginx を再起動すると起動失敗する |
 
 ---
 

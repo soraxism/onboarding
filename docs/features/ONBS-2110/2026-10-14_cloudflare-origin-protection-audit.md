@@ -263,12 +263,16 @@ Slack 通知関数 `slack_error()` 内の `curl` でも同じエスケープ崩�
 
 ## 4. 設計上、手順書どおりでも塞がらない穴
 
-### Cloudflare 共用 IP による迂回【2026-10-14 対応済み】
+### Cloudflare 共用 IP による迂回【2026-10-14 対応済み・本番/dev 両方】
 
 > **秘密ヘッダ方式で対応済み。**
 > Cloudflare の Transform Rule `origin-auth-header` が `X-Origin-Auth` を付与し、
 > Dify 前段の nginx で検証している。ヘッダ無しのアクセスは 403。
 > 手順と実施結果は [2026-10-14_origin-auth-header-runbook.md](./2026-10-14_origin-auth-header-runbook.md)。
+>
+> **dev（`onb-dify-dev`）にも同日導入済み**（秘密値は本番と共有）。
+> **あわせて SSL/TLS モードを「フル（厳格）」へ切り替えた**ため、
+> Cloudflare とオリジン間の中間者攻撃で秘密ヘッダを抜かれる経路も塞がった。
 >
 > 採用しなかった Zone-level AOP（mTLS）は、共有秘密を避けたい場合の移行先として残す。
 

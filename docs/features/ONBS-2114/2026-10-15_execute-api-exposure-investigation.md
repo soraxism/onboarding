@@ -134,7 +134,7 @@ curl --resolve manage-api.onboarding-app.io:443:52.197.23.9 \
 Host ヘッダを偽装すると、カスタムドメイン経由と同じレスポンスが返る。
 Cloudflare を挟んでいるドメインでは、これがそのまま WAF 迂回になる（後述）。
 
-## 5. 残っている露出（ONBS-2114 で対応）
+## 5. 残っている露出
 
 PR #888 は `api/rest` のみが対象で、同一リポジトリの他スタックは手付かずだった。
 
@@ -145,15 +145,35 @@ done
 # → いずれも {"message":"Missing Authentication Token"} ＝ 到達可能
 ```
 
-| スタック | API 名 | API ID | 状態 |
-| --- | --- | --- | --- |
-| `api/rest` | onboarding-manage-api-prod | `y8ozzf8hfb` | 無効化済み |
-| `api/rest-ext-editor` | onboarding-ext-editor-api-prod | `na34r1ebwb` | 有効のまま |
-| `api/rest-ext-viewer` | onboarding-ext-viewer-api-prod | `t2fu8aq041` | 有効のまま |
-| `api/websocket` | manage-sync-guide-prod | `sl3su33zt4` | 有効のまま |
+| スタック | API 名 | API ID | 調査時点 | ONBS-2114 |
+| --- | --- | --- | --- | --- |
+| `api/rest` | onboarding-manage-api-prod | `y8ozzf8hfb` | 無効化済み | — |
+| `api/rest-ext-editor` | onboarding-ext-editor-api-prod | `na34r1ebwb` | 有効のまま | 対応する |
+| `api/websocket` | manage-sync-guide-prod | `sl3su33zt4` | 有効のまま | 対応する |
+| `api/rest-ext-viewer` | onboarding-ext-viewer-api-prod | `t2fu8aq041` | 有効のまま | **見送り** |
 
 ext-viewer は `auth-email` / `auth-code` / `auth-refresh` / `products-ip-authentication` を持つため、
 manage-api と同種の攻撃を受けうる。
+
+ただしビューワー拡張は顧客のエンドユーザーが利用するもので、遮断で停止した場合の影響範囲が
+読み切れないため、ONBS-2114 では見送った。参照先はコードベース上カスタムドメインのみで、
+execute-api の直指定はリポジトリ横断で1件も無いが、実利用での確証までは取れていない。
+
+| 参照元 | 参照先 |
+| --- | --- |
+| `onboarding-web/env/viewer_general_prod.js` | `https://viewer-api.onboarding-app.io` |
+| `onboarding-web/src/json/manifest/viewer_general_prod.json` | `host_permissions: https://viewer-api.onboarding-app.io/` |
+| `api/rest-ext-viewer/.env.prod` | `SAML_ENTITY_ID` / `SAML_ACS_BASE_URL` とも `viewer-api.onboarding-app.io` |
+
+SAML SSO を使っている顧客は IdP 側に ACS URL が登録されているため、適用するなら
+そちらへの影響も含めて確認してから判断する。
+
+対応する2スタックの参照先も同様にカスタムドメインのみ。
+
+| スタック | 参照元 | 参照先 |
+| --- | --- | --- |
+| ext-editor | `Onboarding-Editor-Extension/.env.prod` | `VITE_ONB_EDITOR_API_BASE_URL="https://editor-api.onboarding-app.io"` |
+| websocket | `onboarding-manage-web/app/config/.env.prod` | `NUXT_PUBLIC_WS_BASE_URL='wss://manage-wss.onboarding-app.io'` |
 
 ## 6. 本チケット対象外の重大な露出
 

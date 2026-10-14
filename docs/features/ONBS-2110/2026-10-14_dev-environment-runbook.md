@@ -294,20 +294,28 @@ sudo mv /root/dify/docker/volumes/certbot/conf/renewal/dev-dify-stands.com.conf 
 本番と同じ手順（[origin-auth-header runbook](./2026-10-14_origin-auth-header-runbook.md)）。
 **Cloudflare 側の Transform Rule は設定済み**なので、オリジンに検証を足すだけでよい。
 
-### 秘密値を本番と分けるかの判断
+### 秘密値は本番と同じものを使う（2026-10-14 決定）
 
-| 方式 | 利点 | 欠点 |
-| --- | --- | --- |
-| **本番と同じ値** | 設定が即完了（Transform Rule の変更不要） | **dev から漏れると本番も破られる** |
-| **dev 専用の値** | 影響を分離できる | Transform Rule をホスト名で条件分けして 2 本にする必要がある |
+**Transform Rule の追加・変更は不要。** 既存の `origin-auth-header` が
+ゾーン全体に適用されており、`dev.dify-stands.com` 宛にも同じ値が付与されている。
+**dev の nginx に検証を足すだけで完了する。**
 
-**dev は検証環境で管理が緩くなりやすい**ため、分けるほうが望ましい。
-分ける場合の Transform Rule は次のようになる。
+| 方式 | 利点 | 欠点 | 採否 |
+| --- | --- | --- | --- |
+| **本番と同じ値** | Cloudflare 側の変更が不要 | **dev から漏れると本番も破られる** | **採用** |
+| dev 専用の値 | 影響を分離できる | Transform Rule を 1 本追加する必要がある | 見送り |
+
+**残存リスク: dev 側から秘密値が漏れた場合、本番の迂回対策も同時に破られる。**
+dev は検証環境で管理が緩くなりやすいため、**将来的な分離を検討の余地として残す**。
+
+分離する場合は、既存ルールを変更せず**追加するだけでよい**。
+Transform Rule は順に実行され `Set static` は上書きのため、
+後から dev 用ルールを適用すれば dev だけ値が変わる。
 
 | ルール | 式 | 値 |
 | --- | --- | --- |
-| `origin-auth-header` | `http.host ne "dev.dify-stands.com"` | 本番の値 |
-| `origin-auth-header-dev` | `http.host eq "dev.dify-stands.com"` | dev の値 |
+| 既存 `origin-auth-header` | すべての受信リクエスト | 本番の値（変更不要） |
+| 追加 `origin-auth-header-dev` | `http.host eq "dev.dify-stands.com"` | dev の値 |
 
 ### オリジン側（本番と同じ）
 

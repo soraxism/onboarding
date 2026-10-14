@@ -83,33 +83,61 @@ Transform Rule の値は、ゾーンの閲覧権限がある全員に見える�
 
 ---
 
-## Phase 0: 情報収集
+## Phase 0: 情報収集（2026-10-14 実施済み）
 
-Dify の nginx 構成が分からないと Phase 2 が書けない。先に取得する。
+### 判明した構成
 
-```bash
-ssh -t onb-dify 'sudo docker ps --format "{{.Names}}\t{{.Image}}\t{{.Ports}}"'
-```
+Dify は `/root/dify/docker/` に標準構成で設置されている。
+**nginx の設定はすべてホストにマウントされており、イメージや compose の変更は不要。**
 
-```bash
-ssh -t onb-dify 'sudo docker inspect $(sudo docker ps -qf name=nginx) --format "{{range .Mounts}}{{.Source}} -> {{.Destination}} ({{.Mode}})\n{{end}}"'
-```
-
-```bash
-ssh -t onb-dify 'sudo find / -maxdepth 6 -name "docker-compose.y*ml" -not -path "*/node_modules/*" 2>/dev/null'
-```
-
-確認したいこと:
-
-| 項目 | なぜ必要か |
+| ホスト側 | コンテナ側 |
 | --- | --- |
-| nginx コンテナ名とイメージ | 設定の反映方法が変わる |
-| **nginx 設定がホストからマウントされているか** | マウントされていればファイル編集だけで済む。イメージ内のみなら compose の変更が必要 |
-| docker-compose.yaml の場所 | マウント追加が必要な場合の編集対象 |
+| `/root/dify/docker/nginx/conf.d` | `/etc/nginx/conf.d` |
+| `/root/dify/docker/nginx/nginx.conf.template` | `/etc/nginx/nginx.conf.template` |
+| `/root/dify/docker/nginx/https.conf.template` | `/etc/nginx/https.conf.template` |
+| `/root/dify/docker/nginx/proxy.conf.template` | `/etc/nginx/proxy.conf.template` |
+| `/root/dify/docker/volumes/certbot/conf` | `/etc/letsencrypt` |
+| `/root/dify/docker/volumes/certbot/www` | `/var/www/html` |
 
-Dify の標準構成では `docker/nginx/` 配下（`nginx.conf.template`、
-`conf.d/default.conf.template` 等）がホストからマウントされている。
-その場合はファイルを編集して nginx を再起動するだけでよい。
+nginx コンテナ名: **`docker-nginx-1`**（`nginx:latest`）
+
+### テンプレート方式である点に注意
+
+起動時に `docker-entrypoint.sh` が `envsubst` でテンプレートを展開する。
+
+| | 通常の nginx | Dify の nginx |
+| --- | --- | --- |
+| 編集対象 | `default.conf` | **`default.conf.template`** |
+| 反映方法 | `nginx -s reload` | **コンテナを `restart`**（reload では再展開されない） |
+
+**展開後の `default.conf` を直接編集しても、コンテナ再起動で消える。**
+
+### 設定の構造
+
+`nginx.conf.template` の `http` ブロックに `include /etc/nginx/conf.d/*.conf;` があり、
+`conf.d/default.conf.template` が**単一の `server` ブロック**を定義している。
+HTTPS は `${HTTPS_CONFIG}` として同じ `server` ブロックに差し込まれる。
+
+```nginx
+http {
+    ...
+    include /etc/nginx/conf.d/*.conf;    # ← ここに map を置ける
+}
+```
+
+```nginx
+server {
+    listen ${NGINX_PORT};
+    server_name ${NGINX_SERVER_NAME};
+    location /console/api { ... }
+    location /api { ... }
+    ...
+    ${ACME_CHALLENGE_LOCATION}
+    ${HTTPS_CONFIG}                      # listen 443 ssl もここ
+}
+```
+
+**`server` ブロックが 1 つだけ**なので、そこに検証を 1 行入れれば HTTP / HTTPS の両方に効く。
 
 ---
 
@@ -185,40 +213,96 @@ openssl rand -base64 48 | tr -d '/+=' | head -c 48; echo
 > 利用者がいる状態で再適用する場合（dev 環境など）は、
 > 巻末の「付録: 利用者がいる場合の段階的な適用」に従うこと。
 
-### 2-1. nginx に検証を入れる
+### 2-1. `map` を新しいファイルに置く
 
-`http` ブロックに追加:
+`default.conf.template` は Dify 管理下のファイルで `envsubst` を通る。
+**秘密値はそれとは別の、テンプレートではないファイルに置く。**
+`conf.d/*.conf` は nginx が自動で読み込むため、新規ファイルを置くだけでよい。
+
+ホスト側に `/root/dify/docker/nginx/conf.d/00-origin-auth.conf` を作成する。
 
 ```nginx
+# Cloudflare 経由でないアクセスを弾くための共有秘密（ONBS-2110）
+# 値は Cloudflare の Transform Rule "origin-auth-header" と一致させること
 map $http_x_origin_auth $origin_auth_ok {
     default 0;
     "<1-1で生成した値>" 1;
 }
 ```
 
-`server` ブロックに追加:
+**ファイル名の `00-` は必須。** nginx は `conf.d/*.conf` を名前順に読み込むため、
+`default.conf` より先に `map` を定義しないと「unknown variable」で起動に失敗する。
+
+このファイルは `envsubst` を通らないため、`$http_x_origin_auth` が書き換わる心配もない。
+
+```bash
+ssh -t onb-dify 'sudo tee /root/dify/docker/nginx/conf.d/00-origin-auth.conf > /dev/null' <<'EOF'
+map $http_x_origin_auth $origin_auth_ok {
+    default 0;
+    "<1-1で生成した値>" 1;
+}
+EOF
+```
+
+> 秘密値を含むため、**この内容は git に入れない**。
+
+### 2-2. `server` ブロックに検証を入れる
+
+`/root/dify/docker/nginx/conf.d/default.conf.template` を編集し、
+`server_name` の直後に 1 行追加する。
 
 ```nginx
-if ($origin_auth_ok = 0) { return 403; }
+server {
+    listen ${NGINX_PORT};
+    server_name ${NGINX_SERVER_NAME};
+
+    # Cloudflare 経由でないアクセスを拒否する（ONBS-2110）
+    if ($origin_auth_ok = 0) { return 403; }
+
+    location /console/api {
 ```
 
-> `if` は nginx では避けるべきとされるが、**`server` ブロック直下の `return` は
-> 公式に安全とされる用法**なので問題ない。
-
-### 2-2. 構文確認と反映
+- `server` ブロックが 1 つしかないため、**この 1 行で HTTP / HTTPS 両方に効く**
+- `if` は nginx では避けるべきとされるが、**`server` ブロック直下の `return` は
+  公式に安全とされる用法**なので問題ない
+- ファイル冒頭に「直接編集するな」と書かれているが、`.env` にこの用途の変数は無いため
+  テンプレートを編集するしかない。**Dify のアップグレード時に上書きされる**ので、
+  アップグレード後は再適用すること
 
 ```bash
-ssh -t onb-dify 'sudo docker exec <nginxコンテナ名> nginx -t'
+ssh -t onb-dify 'sudo cp /root/dify/docker/nginx/conf.d/default.conf.template{,.bak-20261014}'
+ssh -t onb-dify 'sudo vi /root/dify/docker/nginx/conf.d/default.conf.template'
 ```
 
-**`nginx -t` が `syntax is ok` / `test is successful` を返してから** reload する。
-構文エラーのまま reload すると nginx が落ちる。
+### 2-3. 反映（reload ではなく restart）
 
 ```bash
-ssh -t onb-dify 'sudo docker exec <nginxコンテナ名> nginx -s reload'
+ssh -t onb-dify 'sudo docker restart docker-nginx-1'
 ```
 
-### 2-3. 遮断の確認（先にこちら）
+**テンプレートの再展開が必要なため `reload` では反映されない。**
+利用者がいないため、数秒の停止は許容する。
+
+起動を確認する。
+
+```bash
+ssh -t onb-dify 'sudo docker ps --filter name=docker-nginx-1 --format "{{.Names}}\t{{.Status}}"'
+ssh -t onb-dify 'sudo docker logs --tail 20 docker-nginx-1'
+```
+
+**`Up` になっていなければ設定エラー。** ログを確認し、直らなければロールバックする。
+
+展開結果も確認しておく。
+
+```bash
+ssh -t onb-dify 'sudo head -12 /root/dify/docker/nginx/conf.d/default.conf'
+```
+
+`if ($origin_auth_ok = 0) { return 403; }` が**そのままの形で**出ていればよい。
+`$origin_auth_ok` が空文字に化けていたら `envsubst` に食われているので、
+`00-origin-auth.conf` 側へ退避する方法を検討する。
+
+### 2-4. 遮断の確認（先にこちら）
 
 サーバー内部から、ヘッダ無しでアクセスして 403 になることを確認する。
 
@@ -230,11 +314,11 @@ ssh onb-dify 'curl -s -o /dev/null -w "ヘッダ無し: %{http_code}\n" -H "Host
 
 | 結果 | 判断 |
 | --- | --- |
-| `403` | 検証が効いている。2-4 へ進む |
+| `403` | 検証が効いている。2-5 へ進む |
 | `307` / `200` | **検証が効いていない。** `map` の値、ヘッダ名、`server` ブロックの位置を確認する |
 | `000` / 接続エラー | nginx が落ちている可能性。`sudo docker ps` と `nginx -t` を確認し、必要ならロールバック |
 
-### 2-4. 疎通の確認
+### 2-5. 疎通の確認
 
 ヘッダを付けたアクセスが通ることを確認する。
 
@@ -252,7 +336,7 @@ ssh onb-dify 'curl -s -o /dev/null -w "ヘッダ有り: %{http_code}\n" -H "Host
 | ブラウザで正常表示 | 完了 |
 | ブラウザで 403 | **Cloudflare 側のヘッダが届いていない。** Transform Rule の値・ヘッダ名・適用条件を確認する。直らなければロールバックする |
 
-### 2-5. 迂回経路が塞がったことの確認（任意）
+### 2-6. 迂回経路が塞がったことの確認（任意）
 
 別の Cloudflare アカウントでオリジン IP（`162.43.85.203`）を向いたゾーンを作り、
 そこからアクセスして **403 になること**を確認するのが最も確実。
@@ -262,16 +346,18 @@ ssh onb-dify 'curl -s -o /dev/null -w "ヘッダ有り: %{http_code}\n" -H "Host
 
 ## ロールバック
 
-オリジン側の 1 行を消して reload するだけで即座に戻る。
-
 ```bash
-# 2-3 で追加した if ブロックを削除してから
-ssh -t onb-dify 'sudo docker exec <nginxコンテナ名> nginx -t && sudo docker exec <nginxコンテナ名> nginx -s reload'
+# テンプレートを戻す
+ssh -t onb-dify 'sudo cp /root/dify/docker/nginx/conf.d/default.conf.template.bak-20261014 /root/dify/docker/nginx/conf.d/default.conf.template'
+
+# map のファイルを消す
+ssh -t onb-dify 'sudo rm -f /root/dify/docker/nginx/conf.d/00-origin-auth.conf'
+
+# 反映
+ssh -t onb-dify 'sudo docker restart docker-nginx-1'
 ```
 
-Cloudflare 側の Transform Rule は残しておいてよい（付けるだけなら無害）。
-
----
+Cloudflare 側の Transform Rule は残しておいてよい（ヘッダを付けるだけなら無害）。
 
 ## 運用
 
@@ -279,7 +365,8 @@ Cloudflare 側の Transform Rule は残しておいてよい（付けるだけ�
 | --- | --- |
 | 秘密値の保管 | 1Password 等。git には入れない |
 | ローテーション | `map` に新旧 2 値を許可 → Transform Rule を新値に変更 → 旧値を `map` から削除、の順で無停止に行える |
-| 再起動耐性 | nginx 設定がホストマウントなら再起動後も残る。イメージ内に直接書いた場合は消えるため、必ずマウント経由にする |
+| 再起動耐性 | ホストマウント配下に置くため、コンテナ・サーバーの再起動後も残る |
+| **Dify のアップグレード** | `default.conf.template` が上書きされ、**検証の 1 行が消える**。アップグレード後は必ず再適用し、遮断確認まで行う |
 | ログの肥大化 | `origin-auth.log` は確認が終わったら出力を止めるか logrotate の対象にする |
 
 ---

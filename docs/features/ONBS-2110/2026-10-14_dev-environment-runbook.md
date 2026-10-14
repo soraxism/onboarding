@@ -86,11 +86,37 @@ else
 fi
 ```
 
-したがって即座にクラッシュはしないが、**フォールバック先の
-`/root/dify/docker/nginx/ssl/fullchain.pem` が無ければ nginx は起動に失敗する**。
-あっても、意図しない証明書（自己署名のプレースホルダ等）で起動してしまう。
+**この dev サーバーではフォールバック先が空だった（2026-10-14 確認）。**
 
-**どちらにしても望ましくないため、証明書を取得してから nginx を再起動する。**
+```
+/root/dify/docker/nginx/ssl/  →  .gitkeep のみ（fullchain.pem なし）
+```
+
+したがって、証明書を取得する前に nginx を再起動すると
+**フォールバック先にもファイルが無く、nginx は起動に失敗して dev が落ちる。**
+
+**A-3 の取得が成功するまで、絶対に nginx を再起動しないこと。**
+
+### 落としてしまった場合の復旧
+
+`.env` を元のドメインに戻せば、旧証明書（失効済みだが存在する）で起動する。
+
+```bash
+cd /root/dify/docker
+vi .env                    # CERTBOT_DOMAIN=dev-dify-stands.com に戻す
+docker compose restart nginx
+docker compose ps nginx
+```
+
+バックアップから戻してもよい。
+
+```bash
+cp /root/dify-env-backup-20261014 /root/dify/docker/.env
+docker compose restart nginx
+```
+
+失効した証明書でも SSL/TLS モードが「フル」である限り通信は継続するため、
+**これで元の状態に戻る。**
 
 ```
 1. .env を変更          （nginx は再起動しない → 旧設定のまま動き続ける）

@@ -86,13 +86,27 @@ ssh -t onb-dify "sudo sh -c 'ipset save > /root/ipset-backup-20261014.conf'"
 sudo cp /usr/local/sbin/update-cf-ipset.sh{,.bak-20261014}
 sudo sh -c 'iptables-save > /root/iptables-backup-20261014.rules'
 sudo sh -c 'ipset save > /root/ipset-backup-20261014.conf'
-sudo ls -la /root/*backup*
 ```
 
-> **`sudo cmd > /root/file` は失敗する。** リダイレクトは sudo ではなく
-> **自分のシェルが実行する**ため、一般ユーザー権限で `/root` に書こうとして
-> `許可がありません` になる。`sudo sh -c '...'` でリダイレクトごと root 側に渡すこと。
-> （`sudo cmd | sudo tee /root/file > /dev/null` でも同じことができる）
+取得できたか確認する。
+
+```bash
+sudo sh -c 'ls -la /root/*backup*'
+sudo sh -c 'wc -l /root/iptables-backup-20261014.rules /root/ipset-backup-20261014.conf'
+```
+
+`iptables` 側が数十行、`ipset` 側が 20 行前後あれば正常。
+
+> **`/root` を扱うときは `sudo sh -c '...'` で囲む。**
+> リダイレクト（`>`）もグロブ（`*`）も **sudo ではなく自分のシェルが処理する**ため、
+> 一般ユーザー権限のまま `/root` に触ろうとして失敗する。
+>
+> | 書き方 | 結果 |
+> | --- | --- |
+> | `sudo iptables-save > /root/x` | **失敗**（`許可がありません`）。リダイレクトを自分のシェルが実行 |
+> | `sudo ls -la /root/*backup*` | **失敗**（`そのようなファイル...`）。グロブが展開されず文字列のまま渡る |
+> | `sudo sh -c 'iptables-save > /root/x'` | 成功 |
+> | `sudo sh -c 'ls -la /root/*backup*'` | 成功 |
 
 ### 2-2. 置換を適用する
 

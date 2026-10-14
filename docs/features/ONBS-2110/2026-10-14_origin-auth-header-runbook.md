@@ -213,20 +213,47 @@ openssl rand -base64 48 | tr -d '/+=' | head -c 48; echo
 > 利用者がいる状態で再適用する場合（dev 環境など）は、
 > 巻末の「付録: 利用者がいる場合の段階的な適用」に従うこと。
 
+### 前提: サーバーにログインしてから実行する
+
+以下のコマンドは **`onb-dify` にログインした状態**で実行する。
+
+```bash
+ssh onb-dify
+```
+
+最初の `sudo` でパスワードを一度聞かれ、以降はしばらくキャッシュされる。
+
+#### 秘密値をヒストリに残さない
+
+**秘密値をコマンドラインに直接書かない。** `~/.bash_history` に残り、
+サーバー上に平文で保存されてしまう。ファイルへの記述は `vi` で行い、
+疎通確認では `read -rs` で変数に読み込む。
+
+### 2-0. バックアップ
+
+```bash
+sudo cp /root/dify/docker/nginx/conf.d/default.conf.template{,.bak-20261014}
+sudo ls -la /root/dify/docker/nginx/conf.d/
+```
+
 ### 2-1. `map` を新しいファイルに置く
 
 `default.conf.template` は Dify 管理下のファイルで `envsubst` を通る。
 **秘密値はそれとは別の、テンプレートではないファイルに置く。**
 `conf.d/*.conf` は nginx が自動で読み込むため、新規ファイルを置くだけでよい。
 
-ホスト側に `/root/dify/docker/nginx/conf.d/00-origin-auth.conf` を作成する。
+```bash
+sudo vi /root/dify/docker/nginx/conf.d/00-origin-auth.conf
+```
+
+内容（`<秘密値>` の部分に Phase 1 で生成した値を貼る）:
 
 ```nginx
 # Cloudflare 経由でないアクセスを弾くための共有秘密（ONBS-2110）
 # 値は Cloudflare の Transform Rule "origin-auth-header" と一致させること
 map $http_x_origin_auth $origin_auth_ok {
     default 0;
-    "<1-1で生成した値>" 1;
+    "<秘密値>" 1;
 }
 ```
 
@@ -235,20 +262,21 @@ map $http_x_origin_auth $origin_auth_ok {
 
 このファイルは `envsubst` を通らないため、`$http_x_origin_auth` が書き換わる心配もない。
 
+権限を絞っておく。
+
 ```bash
-ssh -t onb-dify 'sudo tee /root/dify/docker/nginx/conf.d/00-origin-auth.conf > /dev/null' <<'EOF'
-map $http_x_origin_auth $origin_auth_ok {
-    default 0;
-    "<1-1で生成した値>" 1;
-}
-EOF
+sudo chmod 600 /root/dify/docker/nginx/conf.d/00-origin-auth.conf
 ```
 
-> 秘密値を含むため、**この内容は git に入れない**。
+> nginx は root で起動するため 600 でも読める。
+> このファイルの内容は **git に入れない**。
 
 ### 2-2. `server` ブロックに検証を入れる
 
-`/root/dify/docker/nginx/conf.d/default.conf.template` を編集し、
+```bash
+sudo vi /root/dify/docker/nginx/conf.d/default.conf.template
+```
+
 `server_name` の直後に 1 行追加する。
 
 ```nginx
@@ -269,15 +297,10 @@ server {
   テンプレートを編集するしかない。**Dify のアップグレード時に上書きされる**ので、
   アップグレード後は再適用すること
 
-```bash
-ssh -t onb-dify 'sudo cp /root/dify/docker/nginx/conf.d/default.conf.template{,.bak-20261014}'
-ssh -t onb-dify 'sudo vi /root/dify/docker/nginx/conf.d/default.conf.template'
-```
-
 ### 2-3. 反映（reload ではなく restart）
 
 ```bash
-ssh -t onb-dify 'sudo docker restart docker-nginx-1'
+sudo docker restart docker-nginx-1
 ```
 
 **テンプレートの再展開が必要なため `reload` では反映されない。**
@@ -286,8 +309,8 @@ ssh -t onb-dify 'sudo docker restart docker-nginx-1'
 起動を確認する。
 
 ```bash
-ssh -t onb-dify 'sudo docker ps --filter name=docker-nginx-1 --format "{{.Names}}\t{{.Status}}"'
-ssh -t onb-dify 'sudo docker logs --tail 20 docker-nginx-1'
+sudo docker ps --filter name=docker-nginx-1 --format "{{.Names}}\t{{.Status}}"
+sudo docker logs --tail 20 docker-nginx-1
 ```
 
 **`Up` になっていなければ設定エラー。** ログを確認し、直らなければロールバックする。
@@ -295,19 +318,18 @@ ssh -t onb-dify 'sudo docker logs --tail 20 docker-nginx-1'
 展開結果も確認しておく。
 
 ```bash
-ssh -t onb-dify 'sudo head -12 /root/dify/docker/nginx/conf.d/default.conf'
+sudo head -12 /root/dify/docker/nginx/conf.d/default.conf
 ```
 
 `if ($origin_auth_ok = 0) { return 403; }` が**そのままの形で**出ていればよい。
-`$origin_auth_ok` が空文字に化けていたら `envsubst` に食われているので、
-`00-origin-auth.conf` 側へ退避する方法を検討する。
+`$origin_auth_ok` が空文字に化けていたら `envsubst` に食われている。
 
 ### 2-4. 遮断の確認（先にこちら）
 
-サーバー内部から、ヘッダ無しでアクセスして 403 になることを確認する。
+ヘッダ無しでアクセスして 403 になることを確認する。
 
 ```bash
-ssh onb-dify 'curl -s -o /dev/null -w "ヘッダ無し: %{http_code}\n" -H "Host: dify-stands.com" http://127.0.0.1/'
+curl -s -o /dev/null -w "ヘッダ無し: %{http_code}\n" -H "Host: dify-stands.com" http://127.0.0.1/
 ```
 
 **期待値: `403`**
@@ -316,19 +338,33 @@ ssh onb-dify 'curl -s -o /dev/null -w "ヘッダ無し: %{http_code}\n" -H "Host
 | --- | --- |
 | `403` | 検証が効いている。2-5 へ進む |
 | `307` / `200` | **検証が効いていない。** `map` の値、ヘッダ名、`server` ブロックの位置を確認する |
-| `000` / 接続エラー | nginx が落ちている可能性。`sudo docker ps` と `nginx -t` を確認し、必要ならロールバック |
+| `000` / 接続エラー | nginx が落ちている可能性。`sudo docker ps` とログを確認し、必要ならロールバック |
 
 ### 2-5. 疎通の確認
 
-ヘッダを付けたアクセスが通ることを確認する。
+秘密値を変数に読み込む。**入力は画面に表示されず、ヒストリにも残らない。**
 
 ```bash
-ssh onb-dify 'curl -s -o /dev/null -w "ヘッダ有り: %{http_code}\n" -H "Host: dify-stands.com" -H "X-Origin-Auth: <値>" http://127.0.0.1/'
+read -rs SECRET
 ```
 
-**期待値: `307`（`/apps` へのリダイレクト）または `200`**
+（プロンプトは出ない。値を貼り付けて Enter）
 
-そのうえで、**正規ドメインをブラウザで開いて Dify が正常に表示されること**を必ず確認する。
+```bash
+curl -s -o /dev/null -w "ヘッダ有り: %{http_code}\n" \
+  -H "Host: dify-stands.com" -H "X-Origin-Auth: $SECRET" http://127.0.0.1/
+```
+
+**期待値: `307`**（`/apps` へのリダイレクト）または `200`
+
+確認が終わったら変数を消す。
+
+```bash
+unset SECRET
+```
+
+そのうえで、**正規ドメイン（`https://dify-stands.com/`）をブラウザで開いて
+Dify が正常に表示されること**を必ず確認する。
 ここが最終確認であり、Cloudflare の Transform Rule が実際に効いているかの検証も兼ねる。
 
 | 結果 | 判断 |
@@ -346,15 +382,21 @@ ssh onb-dify 'curl -s -o /dev/null -w "ヘッダ有り: %{http_code}\n" -H "Host
 
 ## ロールバック
 
+`onb-dify` にログインした状態で実行する。
+
 ```bash
-# テンプレートを戻す
-ssh -t onb-dify 'sudo cp /root/dify/docker/nginx/conf.d/default.conf.template.bak-20261014 /root/dify/docker/nginx/conf.d/default.conf.template'
+sudo cp /root/dify/docker/nginx/conf.d/default.conf.template.bak-20261014 \
+        /root/dify/docker/nginx/conf.d/default.conf.template
+sudo rm -f /root/dify/docker/nginx/conf.d/00-origin-auth.conf
+sudo docker restart docker-nginx-1
+```
 
-# map のファイルを消す
-ssh -t onb-dify 'sudo rm -f /root/dify/docker/nginx/conf.d/00-origin-auth.conf'
+復旧を確認する。
 
-# 反映
-ssh -t onb-dify 'sudo docker restart docker-nginx-1'
+```bash
+sudo docker ps --filter name=docker-nginx-1 --format "{{.Names}}\t{{.Status}}"
+curl -s -o /dev/null -w "%{http_code}\n" -H "Host: dify-stands.com" http://127.0.0.1/
+# → 307 に戻れば復旧
 ```
 
 Cloudflare 側の Transform Rule は残しておいてよい（ヘッダを付けるだけなら無害）。

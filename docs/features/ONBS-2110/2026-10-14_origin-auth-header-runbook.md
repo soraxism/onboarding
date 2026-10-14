@@ -251,11 +251,24 @@ sudo vi /root/dify/docker/nginx/conf.d/00-origin-auth.conf
 ```nginx
 # Cloudflare 経由でないアクセスを弾くための共有秘密（ONBS-2110）
 # 値は Cloudflare の Transform Rule "origin-auth-header" と一致させること
+map_hash_bucket_size 128;
 map $http_x_origin_auth $origin_auth_ok {
     default 0;
     "<秘密値>" 1;
 }
 ```
+
+**`map_hash_bucket_size 128;` は必須。**
+既定値（多くの環境で 64 バイト）はキーの長さに対して小さく、
+48 文字の秘密値を入れると nginx が起動に失敗する。
+
+```
+[emerg] could not build map_hash, you should increase map_hash_bucket_size: 64
+```
+
+このエラーが出ると **nginx が再起動ループに入り、Cloudflare からは 521 に見える**。
+128 で足りなければ 256 にする。`map_hash_bucket_size` は http コンテキストの
+ディレクティブなので、このファイルに置ける。
 
 **ファイル名の `00-` は必須。** nginx は `conf.d/*.conf` を名前順に読み込むため、
 `default.conf` より先に `map` を定義しないと「unknown variable」で起動に失敗する。
@@ -339,6 +352,14 @@ curl -s -o /dev/null -w "ヘッダ無し: %{http_code}\n" -H "Host: dify-stands.
 | `403` | 検証が効いている。2-5 へ進む |
 | `307` / `200` | **検証が効いていない。** `map` の値、ヘッダ名、`server` ブロックの位置を確認する |
 | `000` / 接続エラー | nginx が落ちている可能性。`sudo docker ps` とログを確認し、必要ならロールバック |
+
+#### よくある失敗
+
+| ログに出るもの | 原因と対処 |
+| --- | --- |
+| `[emerg] could not build map_hash, you should increase map_hash_bucket_size: 64` | **秘密値が長すぎる。** `map_hash_bucket_size 128;` を `map` の前に入れる（2-1 参照）。nginx が再起動ループになり、ブラウザからは **521** に見える |
+| `[emerg] unknown "origin_auth_ok" variable` | `map` が `default.conf` より後に読まれている。ファイル名が `00-` で始まっているか確認する |
+| `nginx: [emerg] ... unexpected "}"` | `default.conf.template` の編集ミス。バックアップから戻す |
 
 ### 2-5. 疎通の確認
 

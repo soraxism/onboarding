@@ -232,9 +232,26 @@ dev の既存ユニットには**この順序指定と安全装置が無い**た
 
 ### 3-3. 有効化する
 
+**ユニットファイルに余計な行が混ざっていないか先に検証する。**
+手順書のコードブロックをまとめてコピーすると、`sudo systemctl ...` の行まで
+ファイルに入り込みやすい。混入すると `enable` が効かず、
+**再起動しても自動で走らない**まま気づけない。
+
+```bash
+sudo systemd-analyze verify /etc/systemd/system/docker-user-fw.service
+```
+
+何も出力されなければ正常。警告が出たらファイルを見直す。
+
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable --now docker-user-fw.service
+```
+
+**`enabled` になったことを必ず確認する。** ここが `disabled` だと永続化できていない。
+
+```bash
+systemctl is-enabled docker-user-fw.service    # → enabled
 sudo systemctl status docker-user-fw.service --no-pager
 ```
 

@@ -249,34 +249,92 @@ Dify の certbot コンテナは `tail -f /dev/null` で待機するだけで更
 **期限が近いときだけ実際に更新される**。毎日回しても Let's Encrypt の
 重複証明書制限（週 5 回）には当たらない。
 
+#### 8-1. 処理をスクリプトに切り出す
+
+cron に長い 1 行を書くと編集もテストもしづらい。**スクリプトに分ける。**
+
 ```bash
-sudo tee /etc/cron.d/dify-certbot-renew > /dev/null <<'EOF'
-# Dify のオリジン証明書を毎日03:30に点検・更新する
-# --force-renewal を使わないため、期限が近いときだけ実際に更新される
-30 3 * * * root cd /root/dify/docker && /usr/bin/docker compose --profile certbot run --rm certbot /bin/sh /update-cert.sh >> /var/log/dify-certbot-renew.log 2>&1 && /usr/bin/docker compose exec -T nginx nginx -s reload >> /var/log/dify-certbot-renew.log 2>&1
-EOF
+sudo vi /usr/local/sbin/dify-cert-renew.sh
+```
+
+> **vi に入ったら先に `:set paste` を実行する。** 自動インデントで
+> 貼り付け内容が崩れるのを防げる。
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# cron は PATH が最小限なので明示する
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+cd /root/dify/docker
+
+echo "=== $(date '+%Y-%m-%d %H:%M:%S') start ==="
+
+# 証明書の点検・更新
+# update-cert.sh は --force-renewal を使わないため、
+# 期限が近いときだけ実際に更新される
+docker compose --profile certbot run --rm certbot /bin/sh /update-cert.sh
+
+# nginx に反映（証明書が変わっていなくても害はない）
+docker compose exec -T nginx nginx -s reload
+
+echo "=== $(date '+%Y-%m-%d %H:%M:%S') done ==="
 ```
 
 ```bash
-sudo cat /etc/cron.d/dify-certbot-renew
+sudo chmod +x /usr/local/sbin/dify-cert-renew.sh
+sudo bash -n /usr/local/sbin/dify-cert-renew.sh && echo "構文OK"
 ```
 
-> **`update-cert.sh` を書き換えて `--force-renewal` を足す場合は頻度を必ず下げること。**
-> Let's Encrypt の重複証明書は **1 週間に 5 回まで**。
-> `--force-renewal` 付きで毎日回すと枠を使い切り、**本当に必要なときに取得できなくなる**。
-
-設定後、ログの出力先を作っておく。
+#### 8-2. cron に載せる前に手で流す
 
 ```bash
-sudo touch /var/log/dify-certbot-renew.log
-sudo chmod 640 /var/log/dify-certbot-renew.log
+sudo /usr/local/sbin/dify-cert-renew.sh
 ```
 
-翌日以降、実際に動いたか確認する。
+取得直後であれば `Certificate not yet due for renewal.` が出る。**これが正常**。
+
+#### 8-3. cron に 1 行だけ登録する
 
 ```bash
-sudo tail -20 /var/log/dify-certbot-renew.log
+sudo vi /etc/cron.d/dify-cert-renew
 ```
+
+```
+# Dify のオリジン証明書を毎日03:30に点検・更新する（ONBS-2110）
+30 3 * * * root /usr/local/sbin/dify-cert-renew.sh >> /var/log/dify-cert-renew.log 2>&1
+```
+
+> **ファイル末尾は必ず改行で終わらせる。**
+> `/etc/cron.d` 配下は最終行に改行が無いとその行が無視される。
+
+```bash
+sudo cat /etc/cron.d/dify-cert-renew
+sudo tail -c 1 /etc/cron.d/dify-cert-renew | xxd | tail -1    # 末尾が 0a なら改行あり
+sudo touch /var/log/dify-cert-renew.log
+sudo chmod 640 /var/log/dify-cert-renew.log
+```
+
+#### 8-4. 翌日以降に確認する
+
+```bash
+sudo tail -20 /var/log/dify-cert-renew.log
+```
+
+> **ログは誰かが見なければ意味がない。** 今回の失効も「誰も気づかなかった」ことが
+> 長期化の原因だった。期限が 30 日を切っても更新されない場合に気づける仕組み
+> （Slack 通知など）の追加を別途検討すること。
+
+#### 8-5. 常駐コンテナを止める
+
+cron は `run --rm` で都度起動するため、`docker-certbot-1` を常駐させる必要はない。
+
+```bash
+sudo docker stop docker-certbot-1 && sudo docker rm docker-certbot-1
+```
+
+---
 
 ### 9. 掃除（任意・後日でよい）
 

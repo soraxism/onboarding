@@ -95,21 +95,27 @@ Let's Encrypt → DNS解決 → Cloudflare → オリジン(nginx) → /var/www/
 
 ## 手順
 
-**`onb-dify` にログインした状態で実行する。**
+**`onb-dify` にログインし、root シェルに入って実行する。**
+
+`/root` は `700` で root 専用のため、`t_sora` では `cd /root/dify/docker` できない。
+`docker compose` は `docker-compose.yaml` と `.env` をカレントディレクトリから読むため、
+**そのディレクトリにいる必要がある**。
 
 ```bash
-sudo -v        # パスワードをキャッシュしておく
+sudo -i
 cd /root/dify/docker
 ```
 
-> `cd` は `sudo` 不要（ディレクトリに入るだけなら読み取り権限が要る）。
-> 入れない場合は各コマンドでフルパスを指定するか `sudo -i` で root シェルに入る。
+**これ以降のコマンドに `sudo` は不要**（すでに root）。
+
+> **root シェルでは誤操作の影響が大きい。** 手順のコマンドだけを実行し、
+> 終わったら速やかに `exit` すること。
 
 ### 1. バックアップ
 
 ```bash
-sudo cp -a /root/dify/docker/volumes/certbot/conf /root/certbot-conf-backup-20261014
-sudo sh -c 'ls -la /root/certbot-conf-backup-20261014/live/dify-stands.com/'
+cp -a volumes/certbot/conf /root/certbot-conf-backup-20261014
+ls -la /root/certbot-conf-backup-20261014/live/dify-stands.com/
 ```
 
 ### 2. 取得スクリプトの中身を確認する
@@ -118,7 +124,7 @@ certbot コンテナの entrypoint が、テンプレートから `/update-cert.
 **実行前にどんなオプションが使われるか確認しておく。**
 
 ```bash
-sudo cat /root/dify/docker/certbot/update-cert.template.txt
+cat certbot/update-cert.template.txt
 ```
 
 `--webroot -w /var/www/html` が含まれていることを確認する。
@@ -127,8 +133,8 @@ sudo cat /root/dify/docker/certbot/update-cert.template.txt
 ### 3. certbot コンテナを起動する
 
 ```bash
-sudo docker compose --profile certbot up --force-recreate -d certbot
-sudo docker compose ps certbot
+docker compose --profile certbot up --force-recreate -d certbot
+docker compose ps certbot
 ```
 
 `command: tail -f /dev/null` なので、**起動するだけで何も実行されない**。
@@ -137,13 +143,13 @@ sudo docker compose ps certbot
 ### 4. 生成されたスクリプトを確認してから実行する
 
 ```bash
-sudo docker compose exec certbot cat /update-cert.sh
+docker compose exec certbot cat /update-cert.sh
 ```
 
 ドメインとメールアドレスが展開されていることを確認する。
 
 ```bash
-sudo docker compose exec certbot /bin/sh /update-cert.sh
+docker compose exec certbot /bin/sh /update-cert.sh
 ```
 
 **期待する出力:**
@@ -160,8 +166,8 @@ This certificate expires on YYYY-MM-DD.
 ### 5. nginx に反映する
 
 ```bash
-sudo docker compose exec nginx nginx -t
-sudo docker compose exec nginx nginx -s reload
+docker compose exec nginx nginx -t
+docker compose exec nginx nginx -s reload
 ```
 
 証明書のパス（シンボリックリンク）は変わらず、リンク先だけが新しくなるため
@@ -180,6 +186,16 @@ echo | openssl s_client -connect 127.0.0.1:443 2>/dev/null | openssl x509 -noout
 ```bash
 curl -sS -m 15 -o /dev/null -w "%{http_code}\n" -L https://dify-stands.com/     # → 200
 ```
+
+### 6-2. root シェルを抜ける
+
+ここまでで証明書の取得は完了。**root シェルから出ておく。**
+
+```bash
+exit
+```
+
+以降は通常の `t_sora` で `sudo` を付けて実行する。
 
 ### 7. ホストの certbot を停止する
 
@@ -238,8 +254,8 @@ sudo mv /etc/letsencrypt /root/letsencrypt-host-retired-20261014
 certbot が置いたファイルを nginx が返せるか、手で確認できる。
 
 ```bash
-sudo mkdir -p /root/dify/docker/volumes/certbot/www/.well-known/acme-challenge
-sudo sh -c 'echo test-token > /root/dify/docker/volumes/certbot/www/.well-known/acme-challenge/test'
+mkdir -p /root/dify/docker/volumes/certbot/www/.well-known/acme-challenge
+echo test-token > /root/dify/docker/volumes/certbot/www/.well-known/acme-challenge/test
 curl -s -o /dev/null -w "%{http_code}\n" -H "Host: dify-stands.com" http://127.0.0.1/.well-known/acme-challenge/test
 ```
 
@@ -272,13 +288,13 @@ location ^~ /.well-known/acme-challenge/ {
 確認が済んだらテストファイルを消す。
 
 ```bash
-sudo rm -f /root/dify/docker/volumes/certbot/www/.well-known/acme-challenge/test
+rm -f /root/dify/docker/volumes/certbot/www/.well-known/acme-challenge/test
 ```
 
 ### certbot のログ
 
 ```bash
-sudo tail -50 /root/dify/docker/volumes/certbot/logs/letsencrypt.log
+tail -50 /root/dify/docker/volumes/certbot/logs/letsencrypt.log
 ```
 
 ---
@@ -286,9 +302,9 @@ sudo tail -50 /root/dify/docker/volumes/certbot/logs/letsencrypt.log
 ## ロールバック
 
 ```bash
-sudo rm -rf /root/dify/docker/volumes/certbot/conf
-sudo cp -a /root/certbot-conf-backup-20261014 /root/dify/docker/volumes/certbot/conf
-sudo docker compose exec nginx nginx -s reload
+rm -rf /root/dify/docker/volumes/certbot/conf
+cp -a /root/certbot-conf-backup-20261014 /root/dify/docker/volumes/certbot/conf
+docker compose exec nginx nginx -s reload
 ```
 
 失効した証明書に戻るが、SSL/TLS が「フル」である限り通信は継続する。

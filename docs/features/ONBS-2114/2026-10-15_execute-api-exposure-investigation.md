@@ -79,17 +79,25 @@ aws cloudtrail lookup-events --region ap-northeast-1 \
 | 12:58 | `DeleteApiMapping`（tomohiro_suzuki） |
 | 12:58 以降 | `mngV1Auth-prod` の実行ログが途絶。本番管理 API へのリクエスト 0 件 |
 
-> **復旧時の注意**
-> ベースパスマッピングは IaC（serverless.yml）の管理外で、手動作成されている。
-> `serverless deploy` では戻らないため、復旧時は手動で再作成する必要がある。
->
-> ```bash
-> aws apigateway create-base-path-mapping --domain-name manage-api.onboarding-app.io \
->   --base-path v1 --rest-api-id y8ozzf8hfb --stage prod
-> ```
->
-> ※ 削除前の `basePath` の値（`v1` / `v2` の2件と推測）は CloudTrail の
-> `requestParameters` で確認してから実行すること。
+### 削除されたマッピングの内容
+
+ベースパスマッピングは IaC（serverless.yml）の管理外で、手動作成されたもの。
+`serverless deploy` の対象ではない。
+
+削除されたのは prod / dev それぞれ 1 件のみ。
+
+| ドメイン | apiMappingId | 削除時刻 | 実行者 |
+| --- | --- | --- | --- |
+| `manage-api.onboarding-app.io` | `84wlwq` | 10/14 12:58 | tomohiro_suzuki |
+| `dev-manage-api.onboarding-app.io` | `rla9l7` | 10/14 12:46 | tomohiro_suzuki |
+
+`basePath` は `(none)`。フロントが使う `/v1` `/v2`（`NUXT_PUBLIC_API_BASE_URL`）は
+ベースパスではなく API 側のリソースパスである。
+
+```bash
+aws apigateway get-resources --rest-api-id y8ozzf8hfb --region ap-northeast-1
+# → /v1, /v1/auth, /v2 ... が存在する
+```
 
 ## 3. 攻撃のトラフィック痕跡
 

@@ -30,15 +30,50 @@ Cloudflare 側は「ヘッダを付ける」役割を担う。**順序として�
 
 ---
 
-## 前提条件の確認（最優先）
+## 前提条件の確認（2026-10-14 実施済み）
 
-### SSL/TLS モードが Full (strict) であること
+### SSL/TLS モード: 「フル」（Full (strict) ではない）
 
-**Flexible だと Cloudflare → オリジン間が平文になり、ヘッダが経路上で読み取れてしまう。**
-秘密ヘッダ方式はこの前提が崩れると意味を失う。
+| 判定 | 内容 |
+| --- | --- |
+| **この手順は実施可能** | 「フル」でも Cloudflare → オリジン間は **TLS で暗号化される**ため、秘密ヘッダが平文で流れることはない |
+| 避けるべきだったのは「フレキシブル」 | オリジンまで平文になり、この方式が成立しない。該当しない |
+| 残存リスク | 「フル」は**オリジンの証明書を検証しない**。Cloudflare とオリジンの間に割り込める攻撃者がいれば、任意の証明書を提示してヘッダを読める。経路上の位置が必要なため難度は高いが、理想は Full (strict) |
 
-Cloudflare ダッシュボード → 対象ゾーン → SSL/TLS → Overview で確認する。
-`Full (strict)` 以外なら、**この手順を始める前に**切り替えの可否を検討すること。
+### 【要対応】オリジンの証明書が失効している
+
+**Full (strict) へは現状のまま上げられない。** オリジンの証明書が失効しているため、
+切り替えた瞬間に Cloudflare 経由の通信がすべて落ちる。
+
+```
+subject : CN = dify-stands.com
+issuer  : C = US, O = Let's Encrypt, CN = E7
+notAfter: Jan  4 12:31:12 2026 GMT    ← 283 日超過（2026-10-14 時点）
+```
+
+「フル」モードは証明書を検証しないため、**失効したまま 9 か月以上気づかずに運用されていた**。
+
+| 確認項目 | 結果 |
+| --- | --- |
+| `certbot` | インストール済み |
+| `certbot.timer` | **稼働中**（直近実行 2026-10-14 17:43、次回 2026-10-15 08:10） |
+| 証明書 | **283 日前に失効** |
+| `/.well-known/acme-challenge/` | **404** |
+
+**タイマーは動いているのに更新できていない。** 原因として有力なのは次の 2 つ。
+
+1. **HTTP-01 チャレンジが成立しない** — `/.well-known/acme-challenge/` が 404 を返しており、
+   Dify の nginx がチャレンジ用パスを配信していない。
+   certbot が standalone モードなら、80 番を Docker の nginx が握っているため bind できない
+2. **firewall による遮断** — 証明書の発行日（2025-10-06）は
+   `update-cf-ipset.sh` の設置日と同日。**Cloudflare 限定の許可ルールを入れた直後から
+   更新が止まった**と見るのが自然
+
+**推奨する恒久対策は DNS-01 チャレンジへの切り替え。** Cloudflare API トークンを使う方式なら
+80 番の到達性に依存しないため、現在の firewall 構成のままで更新できる。
+
+これは**本手順とは別タスク**として扱う（この手順の実施を妨げるものではない）。
+詳細な原因は `sudo journalctl -u certbot` と `/var/log/letsencrypt/` の確認が必要。
 
 ### ダッシュボードの閲覧権限
 
@@ -161,7 +196,7 @@ ssh -t onb-dify 'sudo docker exec <nginxコンテナ名> nginx -s reload'
 サーバー内部から、ヘッダ無しでアクセスして 403 になることを確認する。
 
 ```bash
-ssh onb-dify 'curl -s -o /dev/null -w "ヘッダ無し: %{http_code}\n" -H "Host: <ドメイン>" http://127.0.0.1/'
+ssh onb-dify 'curl -s -o /dev/null -w "ヘッダ無し: %{http_code}\n" -H "Host: dify-stands.com" http://127.0.0.1/'
 ```
 
 **期待値: `403`**
@@ -177,7 +212,7 @@ ssh onb-dify 'curl -s -o /dev/null -w "ヘッダ無し: %{http_code}\n" -H "Host
 ヘッダを付けたアクセスが通ることを確認する。
 
 ```bash
-ssh onb-dify 'curl -s -o /dev/null -w "ヘッダ有り: %{http_code}\n" -H "Host: <ドメイン>" -H "X-Origin-Auth: <値>" http://127.0.0.1/'
+ssh onb-dify 'curl -s -o /dev/null -w "ヘッダ有り: %{http_code}\n" -H "Host: dify-stands.com" -H "X-Origin-Auth: <値>" http://127.0.0.1/'
 ```
 
 **期待値: `307`（`/apps` へのリダイレクト）または `200`**

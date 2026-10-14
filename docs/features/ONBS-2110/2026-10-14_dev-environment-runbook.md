@@ -217,11 +217,19 @@ ls -la /root/dify/docker/nginx/ssl/
 ```
 
 ```bash
-docker compose restart nginx
+docker compose up -d --force-recreate nginx
 docker compose ps nginx
 ```
 
-`reload` ではなく `restart`。`CERTBOT_DOMAIN` の変更を entrypoint が再展開する必要があるため。
+**`restart` では反映されない。** `docker compose restart` は既存コンテナを
+そのまま再起動するだけで、環境変数はコンテナ作成時の値が固定されている。
+`.env` の `CERTBOT_DOMAIN` を読み直すには**コンテナの作り直しが必要**。
+
+| コマンド | `.env` の変更 | 用途 |
+| --- | --- | --- |
+| `nginx -s reload` | 反映されない | 設定ファイルの再読み込みのみ |
+| `docker compose restart nginx` | **反映されない** | コンテナの再起動のみ |
+| `docker compose up -d --force-recreate nginx` | **反映される** | 本手順ではこれを使う |
 
 ```bash
 docker compose logs --tail 20 nginx
@@ -235,6 +243,9 @@ echo | openssl s_client -connect 127.0.0.1:443 2>/dev/null | openssl x509 -noout
 
 `CN = dev.dify-stands.com` かつ `notAfter` が約 90 日後になっていればよい。
 
+**旧ドメイン（`CN = dev-dify-stands.com`）のままなら、`.env` が読み直されていない。**
+`restart` ではなく `up -d --force-recreate` を使ったか確認する。
+
 ```bash
 exit
 ```
@@ -244,6 +255,26 @@ exit
 ```bash
 curl -sS -m 15 -o /dev/null -w "%{http_code}\n" -L https://dev.dify-stands.com/     # → 200
 ```
+
+### 6-2. CERTBOT_EMAIL を実在のアドレスに直す
+
+**dev の `CERTBOT_EMAIL` はプレースホルダ（`your_email@example.com`）のままだった。**
+
+Let's Encrypt は**失効の 20 日前・10 日前・1 日前に警告メールを送る**。
+宛先が存在しないため、**dev の証明書が切れても誰にも通知が届かなかった**。
+今回の失効が 8 か月以上気づかれなかった一因。
+
+cron による自動更新とは**独立した検知手段**になるため、直しておく。
+
+```bash
+cd /root/dify/docker
+vi .env          # CERTBOT_EMAIL=developer@onboarding-app.io
+docker compose exec certbot certbot update_account --email developer@onboarding-app.io --no-eff-email
+```
+
+> `.env` の変更だけでは**今後の新規取得にしか効かない**。
+> 既に発行済みの ACME アカウントに登録されたアドレスを更新するため、
+> `update_account` も必要。
 
 ### 7. 自動更新を仕込む【これが無いと 90 日後に再発】
 

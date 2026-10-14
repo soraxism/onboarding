@@ -23,17 +23,31 @@
 
 ---
 
-## 手順 1: 現状の確定（まだ未実施）
+## 手順 1: 現状の確定（2026-10-14 実施済み）
 
 ```bash
 ssh -t onb-dify 'sudo iptables -L DOCKER-USER -n -v --line-numbers; echo ===; sudo ipset list cf4 | head -25; echo ===; sudo ipset list cf6 | head -5'
 ```
 
-記録すること:
+### 取得結果
 
-- `cf4` の `Number of entries`（**0 なら以降の前提が変わる**ため、先に相談）
-- `DOCKER-USER` の全ルールと `pkts` / `bytes`
-- VPN 許可ルール・`3.113.105.121` 許可ルールの有無
+```
+Chain DOCKER-USER (1 references)
+num   pkts bytes target  prot opt in    out  source     destination
+1      51M 5271M RETURN  tcp  --  ens3  *    0.0.0.0/0  0.0.0.0/0  match-set cf4 src multiport dports 80,443
+2     246K   14M DROP    tcp  --  ens3  *    0.0.0.0/0  0.0.0.0/0  multiport dports 80,443
+```
+
+| 項目 | 結果 |
+| --- | --- |
+| `cf4` のエントリ数 | **15 件。公式リストと完全一致** |
+| `cf6` | 7 件だが `References: 0`（ルール未投入） |
+| VPN 許可ルール | **存在しない** |
+| `3.113.105.121`（NAT Gateway）許可ルール | **存在しない** |
+
+**手順 3 の永続化スクリプトは、この 2 本構成をそのまま再現すればよい。**
+ただし VPN / NAT Gateway を IP 直指定で使う運用なら、許可ルールを足した上で永続化すること
+（足さずに永続化すると、現在の遮断状態が恒久化する）。
 
 変更前のバックアップも取っておく。
 

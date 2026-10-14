@@ -45,6 +45,19 @@ ssh -t onb-dify 'sudo iptables-save > /root/iptables-backup-20261014.rules; sudo
 
 ## 手順 2: 更新スクリプトの修正（優先度: 高）
 
+> **`onb-dify-dev`（`210.131.217.130`）に正しい版がある。**
+> 手で直すより、dev から持ってくるほうが確実で早い。
+>
+> ```bash
+> # dev の正しい版を取得して本番へ配置する（本番の既存ファイルは必ず退避してから）
+> ssh onb-dify-dev 'sudo cat /usr/local/sbin/update-cf-ipset.sh' > /tmp/update-cf-ipset.sh
+> # Slack Webhook URL が dev/本番で異なる場合があるため、差分を確認してから反映すること
+> ssh onb-dify 'sudo cat /usr/local/sbin/update-cf-ipset.sh' > /tmp/update-cf-ipset.prod.sh
+> diff /tmp/update-cf-ipset.prod.sh /tmp/update-cf-ipset.sh
+> ```
+>
+> 以下は手で直す場合の手順。
+
 ### 2-1. 正規表現の修正
 
 `/usr/local/sbin/update-cf-ipset.sh` の 109 行目。
@@ -90,6 +103,10 @@ ssh -t onb-dify 'sudo ipset list cf4 | head -25'
 
 再起動でルールが消える問題への対応。手順書の「永続化」節をベースに、
 **`cf4` が空のときはルールを入れない安全装置**を追加する。
+
+dev には動作実績のある `docker-user-fw.service` があるが、
+**`cf4` が空でも DROP を入れてしまう**弱点と、`update-cf-ipset.service` との
+順序指定が無い問題、`-i ens3` 指定が無い問題があるため、そのままは使わない。
 
 ```bash
 sudo tee /etc/systemd/system/docker-user-fw.service <<'EOF'

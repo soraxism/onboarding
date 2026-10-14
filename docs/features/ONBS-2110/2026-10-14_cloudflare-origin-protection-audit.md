@@ -215,7 +215,64 @@ systemctl is-active  ufw → active (exited)
 
 ---
 
-## 6. 未確認事項（root 権限が必要）
+## 6. dev 環境との比較（本番だけが壊れている）
+
+同じ手順書は `onb-dify-dev`（`210.131.217.130`）にも適用されている。
+手順書内の実行例に `root@x210-131-217-130` が残っていることから気づき、確認した。
+
+**結果として dev は正常に機能しており、本番側だけが壊れている。**
+
+| 確認項目 | `onb-dify`（本番） | `onb-dify-dev`（dev） |
+| --- | --- | --- |
+| 更新スクリプト 109 行目の正規表現 | `\\\\.`（**壊れている**） | `\.`（**正しい**） |
+| `slack_error()` の行継続 | `\\\\`（**壊れている**） | `\`（**正しい**） |
+| 更新ログの最終結果 | `curl: (6) Could not resolve host: \\` | `[OK] updated: v4=15, v6=7` |
+| `docker-user-fw.service` | **存在しない** | 存在し `enabled` |
+| `update-cf-ipset.service` | **failed**（2026-01-31 以降） | 正常（oneshot 完了済み） |
+| 外向き NIC | `ens3` | `ens3` |
+
+本番は Notion からのコピペ時にエスケープが崩れたまま、
+dev は崩れていない状態で投入されたと考えられる。
+
+**dev に動作実績のある実物があるため、是正は「dev の構成を本番へ移植する」のが最短。**
+
+### dev の `docker-user-fw.service`（動作実績あり）
+
+```ini
+[Unit]
+Description=Apply DOCKER-USER Cloudflare allowlist
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c '\
+  ipset list cf4 >/dev/null 2>&1 || ipset create cf4 hash:net family inet; \
+  iptables -C DOCKER-USER -p tcp -m set --match-set cf4 src -m multiport --dports 80,443 -j RETURN 2>/dev/null || \
+  iptables -I DOCKER-USER 1 -p tcp -m set --match-set cf4 src -m multiport --dports 80,443 -j RETURN; \
+  iptables -C DOCKER-USER -p tcp -m multiport --dports 80,443 -j DROP 2>/dev/null || \
+  iptables -I DOCKER-USER 2 -p tcp -m multiport --dports 80,443 -j DROP'
+
+[Install]
+WantedBy=multi-user.target
+```
+
+ただし**そのまま移植するのは避けたい弱点が 2 つある**。
+
+1. **`cf4` が空でも DROP を入れてしまう** — `ipset create cf4` で空のセットを作った上で
+   DROP ルールを投入するため、`update-cf-ipset.service` より先に実行されると
+   **Cloudflare 経由を含む全アクセスが遮断される**。順序指定（`After=update-cf-ipset.service`）も無い
+2. **`-i ens3` が無い** — 手順書本体は `-i ens3` を指定している。
+   インターフェース指定が無いと docker のブリッジ経由で転送される 80/443 にもマッチするため、
+   コンテナ間通信に影響しうる
+
+是正手順では、この 2 点に安全装置を足した版を使う（[是正手順](./2026-10-14_remediation-runbook.md) 手順 3）。
+
+また **dev 側にも 1 の弱点は残っている**ため、本番の対応後に同じ改善を入れることを推奨する。
+
+---
+
+## 7. 未確認事項（root 権限が必要）
 
 `t_sora` は sudo グループに属するが `sudo` がパスワードを要求するため、以下は未取得。
 

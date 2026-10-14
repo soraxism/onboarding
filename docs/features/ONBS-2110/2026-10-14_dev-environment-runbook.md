@@ -22,6 +22,37 @@
 
 **本番ゾーンの SSL/TLS モードを「フル（厳格）」へ切り替え済み**（同日実施）。
 
+### 再起動テスト（2026-10-14 実施・合格）
+
+```
+boot              2026-10-14 22:56:20
+update-cf-ipset   2026-10-14 22:56:55   ← ipset を先に復元
+docker-user-fw    2026-10-14 22:56:59   ← その 4 秒後にルール適用
+```
+
+`Requires=update-cf-ipset.service` による順序保証が実機で機能した。
+
+| 検証項目 | 再起動前 | 再起動後 | 判定 |
+| --- | --- | --- | --- |
+| `docker-user-fw.service` | active | active | 合格 |
+| `ipset cf4` | 15 件 | 15 件 | 合格 |
+| コンテナ | 11 個 Up | 11 個 Up（`RestartPolicy=always`） | 合格 |
+| 秘密ヘッダ検証 | 403 | 403 | 合格 |
+| 証明書 | `CN=dev.dify-stands.com` | 同左 | 合格 |
+| `https://dev.dify-stands.com/` | 200 | 200 | 合格 |
+| IP 直叩き | 遮断 | 遮断 | 合格 |
+
+#### `DOCKER-USER` の 3 本目は Docker のデフォルト
+
+```
+1  RETURN  tcp -- ens3  match-set cf4 src multiport dports 80,443
+2  DROP    tcp -- ens3  multiport dports 80,443
+3  RETURN  all -- *                              ← Docker が自動生成
+```
+
+3 本目は「80/443 以外を素通しする」受け皿で、**防御を弱めるものではない**。
+こちらのルール 2 本が 1 番・2 番に入っていれば意図どおり。
+
 ### 作業中に判明した追加の問題
 
 | 事象 | 内容 |

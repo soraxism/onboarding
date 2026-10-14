@@ -52,7 +52,8 @@ NAT Gateway・VPN の許可ルールが無いのは**設計どおり**（IP 制�
 変更前のバックアップも取っておく。
 
 ```bash
-ssh -t onb-dify 'sudo iptables-save > /root/iptables-backup-20261014.rules; sudo ipset save > /root/ipset-backup-20261014.conf'
+ssh -t onb-dify "sudo sh -c 'iptables-save > /root/iptables-backup-20261014.rules'"
+ssh -t onb-dify "sudo sh -c 'ipset save > /root/ipset-backup-20261014.conf'"
 ```
 
 ---
@@ -83,9 +84,15 @@ ssh -t onb-dify 'sudo iptables-save > /root/iptables-backup-20261014.rules; sudo
 
 ```bash
 sudo cp /usr/local/sbin/update-cf-ipset.sh{,.bak-20261014}
-sudo iptables-save > /root/iptables-backup-20261014.rules
-sudo ipset save > /root/ipset-backup-20261014.conf
+sudo sh -c 'iptables-save > /root/iptables-backup-20261014.rules'
+sudo sh -c 'ipset save > /root/ipset-backup-20261014.conf'
+sudo ls -la /root/*backup*
 ```
+
+> **`sudo cmd > /root/file` は失敗する。** リダイレクトは sudo ではなく
+> **自分のシェルが実行する**ため、一般ユーザー権限で `/root` に書こうとして
+> `許可がありません` になる。`sudo sh -c '...'` でリダイレクトごと root 側に渡すこと。
+> （`sudo cmd | sudo tee /root/file > /dev/null` でも同じことができる）
 
 ### 2-2. 置換を適用する
 

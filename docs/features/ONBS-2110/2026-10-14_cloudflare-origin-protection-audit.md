@@ -109,19 +109,32 @@ References: 0      ← どの ip6tables ルールからも参照されていな�
 `References: 0` は、**IPv6 側の DOCKER-USER ルールが投入されていない**ことを意味する。
 ただしグローバル IPv6 アドレスが無いため、現時点で実害は無い。
 
-### 【要確認】手順書にあるのに存在しないルールが 2 つある
+### NAT Gateway / VPN の許可ルールが無いのは設計どおり（2026-10-14 確認）
 
-| 本来あるはずのルール | 実際 | 影響 |
-| --- | --- | --- |
-| NAT Gateway（`3.113.105.121`）からの 80/443 を許可 | **存在しない** | 手順書には「DNS キャッシュにより Cloudflare 経由にならない NAT Gateway からのアクセスもあるため念の為許可する」と明記されている。**その経路のアクセスは現在 DROP されている** |
-| 弊社 VPN からの 80/443 を許可 | **存在しない** | 構成図では「弊社VPN → Dify」に IP 許可があることになっているが、`DOCKER-USER` には該当ルールが無い。**VPN から IP 直指定で Dify へアクセスすると遮断される** |
+`DOCKER-USER` には Cloudflare 許可と DROP の 2 本しか無く、
+NAT Gateway（`3.113.105.121`）と弊社 VPN の許可ルールは存在しない。
 
-246K の DROP には、**これら正規の経路からのアクセスが混ざっている可能性がある**。
-Docker が公開するポートへの通信は `INPUT` ではなく `FORWARD` / `DOCKER-USER` を通るため、
-`INPUT` 側に許可を書いていても効かない点に注意。
+当初これを欠落と判断したが、**実装者に確認したところ設計どおり**だった。
+**VPN と NAT Gateway の IP 制限は Cloudflare 側で行っている。**
 
-VPN 経由でも**ドメイン名でアクセスしていれば Cloudflare を通る**ため問題は出ない。
-運用実態がどちらなのかの確認が必要。
+```
+FE ──→ BE（AI-Server / AI-API）──[IP許可]──→ Cloudflare ──[Cloudflareの IP許可]──→ Dify
+                                    弊社VPN ──[IP許可]──→ ↑
+```
+
+つまり二段構成になっている。
+
+| 層 | 役割 |
+| --- | --- |
+| **オリジン（iptables + ipset）** | 「Cloudflare 全体」を許可する粗い網。直叩きを落とす |
+| **Cloudflare（IP アクセスルール）** | BE・VPN の送信元 IP だけに絞る細かい網 |
+
+正規の通信はすべて Cloudflare を通るため、オリジン側に個別の許可ルールは要らない。
+手順書に残っている `3.113.105.121` の許可は、この構成では不要。
+
+**この構成では「オリジンに届いた時点で Cloudflare は通過済み」が前提になる。**
+したがって次節の「Cloudflare 共用 IP による迂回」は、
+単にオリジンへ到達されるだけでなく、**Cloudflare 側の IP 制限ごと迂回される**ことを意味する。
 
 ### IPv6 からの迂回は成立しない
 
@@ -237,13 +250,40 @@ Slack 通知関数 `slack_error()` 内の `curl` でも同じエスケープ崩�
 攻撃者が**自分の Cloudflare アカウントで `162.43.85.203` を向いたゾーンを作成**すると、
 その通信は Cloudflare の IP から出てくるため**許可される**。
 
-Cloudflare をオリジン保護に使う場合によく知られた回避経路で、
-IP 許可リストだけでは原理的に塞げない。
+**この構成では被害が IP 到達にとどまらない。** 上記のとおり BE・VPN の絞り込みは
+Cloudflare 側の IP アクセスルールで行っているため、攻撃者が自分の Cloudflare を挟むと
+**その IP 制限ごと迂回され、Dify に素通しで到達する**。
+オリジン側の ipset は「Cloudflare であること」しか見ていないため、何も止められない。
 
-対策候補:
+#### 対策の選択肢
 
-- **Authenticated Origin Pulls（mTLS）** — Cloudflare が提示するクライアント証明書をオリジンで検証する
-- **秘密ヘッダの検証** — Cloudflare 側で付与したヘッダをオリジンで必須化する
+| 方式 | 迂回を塞げるか | 必要な変更 |
+| --- | --- | --- |
+| **Authenticated Origin Pulls（Global）** | **塞げない** | 小 |
+| **Authenticated Origin Pulls（Zone-level / 自前証明書）** | **塞げる** | 中（Dify 前段 nginx の設定） |
+| **秘密ヘッダの検証** | 塞げる | 中（同上） |
+| **Cloudflare Tunnel（cloudflared）** | 塞げる | 大（80/443 を公開しなくなる） |
+
+**重要: 標準の「Global」AOP では塞げない。**
+Cloudflare が提供する Origin Pull CA 証明書は**全 Cloudflare アカウントで共有**されており、
+「Cloudflare ネットワークから来たこと」しか証明しない。
+攻撃者が自分の Cloudflare アカウントから送っても**同じ証明書を提示するため通過する**。
+
+> Global AOP uses a Cloudflare-provided certificate shared across all accounts,
+> so it only proves a request came from the Cloudflare network — not from your account specifically.
+> — [Cloudflare SSL/TLS docs](https://developers.cloudflare.com/ssl/origin-configuration/authenticated-origin-pull/set-up/global/)
+
+塞ぐには**自前の証明書をアップロードする Zone-level AOP**（または per-hostname AOP）が必要。
+証明書がアカウント専有になるため、他アカウント経由の通信は TLS ハンドシェイクで落ちる。
+
+**秘密ヘッダ方式**は、Cloudflare の Transform Rule で固定ヘッダを付与し、
+オリジンの nginx で必須化する。mTLS より弱い（ヘッダが漏れると破られる）が構成変更は小さい。
+
+**Cloudflare Tunnel** が最も堅い。オリジンが 80/443 を公開しなくなるため、
+IP 直叩きという攻撃面自体が消滅する。ただし Dify の配置変更を伴う。
+
+いずれも **Dify 前段の nginx はコンテナ内**にあるため、
+ボリュームマウントか compose の構成変更が必要。別途調査の上で実施する。
 
 ### その他
 
@@ -344,15 +384,11 @@ WantedBy=multi-user.target
 | RETURN ルールの `pkts` | 51M パケット / 5.2GB。正規トラフィックは正常 |
 | `ipset cf4` のエントリ数 | **15 件。公式リストと完全一致（現時点では最新）** |
 | `ipset cf6` | 7 件だが `References: 0`。IPv6 ルールは未投入（実害なし） |
-| NAT Gateway（`3.113.105.121`）の許可ルール | **存在しない**（手順書には記載あり） |
-| 弊社 VPN の許可ルール | **存在しない**（構成図には記載あり） |
+| NAT Gateway（`3.113.105.121`）の許可ルール | 存在しない（**設計どおり**。Cloudflare 側で制限） |
+| 弊社 VPN の許可ルール | 存在しない（**設計どおり**。Cloudflare 側で制限） |
 
 ### 残る未確認事項
 
-- **VPN から Dify へどう到達しているか** — `DOCKER-USER` に許可ルールが無いため、
-  ドメイン名経由（Cloudflare 通過）で使っているのか、IP 直指定で使えず困っているのかの確認が必要
-- **NAT Gateway 経由のアクセスが実際に落ちていないか** — 手順書が想定していた
-  「DNS キャッシュで Cloudflare を経由しない経路」が発生しているなら、現在は遮断されている
 - **Xserver VPS 管理コンソールのパケットフィルター設定** — 未使用ポートまで無応答だったため、
   VPS 側でも遮断されていると推測しているが未裏取り
 - **`5003/tcp` の用途** — `0.0.0.0` で LISTEN しているがローカルからも応答が無い

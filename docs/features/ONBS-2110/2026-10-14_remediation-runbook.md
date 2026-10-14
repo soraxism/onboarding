@@ -46,8 +46,8 @@ num   pkts bytes target  prot opt in    out  source     destination
 | `3.113.105.121`（NAT Gateway）許可ルール | **存在しない** |
 
 **手順 3 の永続化スクリプトは、この 2 本構成をそのまま再現すればよい。**
-ただし VPN / NAT Gateway を IP 直指定で使う運用なら、許可ルールを足した上で永続化すること
-（足さずに永続化すると、現在の遮断状態が恒久化する）。
+NAT Gateway・VPN の許可ルールが無いのは**設計どおり**（IP 制限は Cloudflare 側で実施）のため、
+追加は不要。手順書に残る `3.113.105.121` の許可もこの構成では要らない。
 
 変更前のバックアップも取っておく。
 
@@ -214,20 +214,53 @@ nc -z -G 5 -w 5 -v 162.43.85.203 443   # → タイムアウトすれば正常
 
 ---
 
-## 手順 5: Cloudflare 共用 IP の迂回対策（優先度: 中）
+## 手順 5: Cloudflare 共用 IP の迂回対策（優先度: 高）
 
 IP 許可リストだけでは、攻撃者が自分の Cloudflare アカウント経由で到達できる。
-**Authenticated Origin Pulls（mTLS）** の導入を推奨する。
+**この構成では BE・VPN の絞り込みも Cloudflare 側で行っているため、
+迂回されるとアクセス制御ごと無効化される。** 優先度は中ではなく高。
 
-1. Cloudflare ダッシュボード → SSL/TLS → Origin Server → Authenticated Origin Pulls を有効化
-2. Cloudflare の Origin Pull CA 証明書をオリジンに配置
-3. Dify 前段の nginx コンテナで `ssl_client_certificate` と `ssl_verify_client on` を設定
+### 方式の比較
 
-nginx の設定が Docker イメージ内にあるため、**ボリュームマウントか compose の構成変更が必要**。
-Dify の構成に手を入れることになるので、別途調査・検証の上で実施する。
+| 方式 | 迂回を塞げるか | 変更規模 | 備考 |
+| --- | --- | --- | --- |
+| AOP（Global） | **塞げない** | 小 | 証明書が全 Cloudflare アカウント共有 |
+| AOP（Zone-level / 自前証明書） | **塞げる** | 中 | 証明書がアカウント専有 |
+| 秘密ヘッダの検証 | 塞げる | 中 | ヘッダが漏れると破られる |
+| Cloudflare Tunnel | 塞げる | 大 | 80/443 を公開しなくなる |
 
-簡易な代替案として、Cloudflare 側で秘密ヘッダを付与し、オリジンで必須化する方法もある。
-mTLS より弱いが、構成変更は小さい。
+### 【重要】Global AOP では塞げない
+
+Cloudflare が提供する Origin Pull CA 証明書は**全 Cloudflare アカウントで共有**されており、
+「Cloudflare ネットワークから来たこと」しか証明しない。
+攻撃者が自分の Cloudflare アカウントから送っても**同じ証明書を提示するため通過する**。
+
+> Global AOP uses a Cloudflare-provided certificate shared across all accounts,
+> so it only proves a request came from the Cloudflare network — not from your account specifically.
+> — [Cloudflare SSL/TLS docs](https://developers.cloudflare.com/ssl/origin-configuration/authenticated-origin-pull/set-up/global/)
+
+### Zone-level AOP（推奨）
+
+1. 自前のクライアント証明書を作成し、Cloudflare にアップロードする
+   （[Zone-level AOP](https://developers.cloudflare.com/ssl/origin-configuration/authenticated-origin-pull/set-up/zone-level/)）
+2. 対象ゾーンで AOP を有効化する
+3. Dify 前段の nginx で検証を有効にする
+
+```nginx
+ssl_client_certificate /etc/nginx/certs/cloudflare-origin-pull-ca.pem;
+ssl_verify_client on;
+```
+
+**nginx の設定は Dify の Docker イメージ内にあるため、ボリュームマウントか
+compose の構成変更が必要。** 事前に Dify の compose 構成を調査すること。
+
+### 検証方法
+
+設定後、**正規ドメイン経由で Dify が正常に表示されること**を必ず確認する。
+証明書の配置を誤ると、Cloudflare 経由の通信もすべて TLS ハンドシェイクで落ちる。
+
+迂回経路を塞げたかの確認は、別の Cloudflare アカウントでオリジン IP を向いたゾーンを作り、
+そこからアクセスして拒否されることを見るのが確実（検証用アカウントが必要）。
 
 ---
 

@@ -59,76 +59,140 @@ ssh -t onb-dify 'sudo iptables-save > /root/iptables-backup-20261014.rules; sudo
 
 ## 手順 2: 更新スクリプトの修正（優先度: 高）
 
-> **`onb-dify-dev`（`210.131.217.130`）に正しい版がある。**
-> 手で直すより、dev から持ってくるほうが確実で早い。
->
-> ```bash
-> # dev の正しい版を取得して本番へ配置する（本番の既存ファイルは必ず退避してから）
-> ssh onb-dify-dev 'sudo cat /usr/local/sbin/update-cf-ipset.sh' > /tmp/update-cf-ipset.sh
-> # Slack Webhook URL が dev/本番で異なる場合があるため、差分を確認してから反映すること
-> ssh onb-dify 'sudo cat /usr/local/sbin/update-cf-ipset.sh' > /tmp/update-cf-ipset.prod.sh
-> diff /tmp/update-cf-ipset.prod.sh /tmp/update-cf-ipset.sh
-> ```
->
-> 以下は手で直す場合の手順。
+**`onb-dify` にログインした状態で実行する。**
 
-### 2-1. 正規表現の修正
+### 2-0. 壊れ方の実態
 
-`/usr/local/sbin/update-cf-ipset.sh` の 109 行目。
+本番と dev のスクリプトを突き合わせた結果、**差分はすべて
+「バックスラッシュが 4 倍になっている」だけ**だった。
+
+| 箇所 | 本番 | 正しい値 |
+| --- | --- | --- |
+| 109 行目の正規表現 | `\\\\.` | `\.` |
+| `slack_error()` の行継続 | `\\\\` | `\` |
+| 改行エスケープ | `\\\\n` | `\n` |
+| `sed 's/"/..../g'` | バックスラッシュ 8 個 | 2 個 |
+
+いずれも **1/4 になる**ため、`\\\\`（4 個）→ `\`（1 個）の一括置換で直る。
+8 個の箇所も 4 個 2 組として処理されるため同時に直る。
+
+**Slack Webhook URL は dev と本番で異なる。** dev のファイルをそのまま持ち込むと
+通知先が変わるため、**置換方式を採る**（本番の値がそのまま残る）。
+
+### 2-1. バックアップ
 
 ```bash
-# 修正前
-[[ "$cidr" =~ ^([0-9]{1,3}\\\\.){3}[0-9]{1,3}/[0-9]{1,2}$ ]] || continue
+sudo cp /usr/local/sbin/update-cf-ipset.sh{,.bak-20261014}
+sudo iptables-save > /root/iptables-backup-20261014.rules
+sudo ipset save > /root/ipset-backup-20261014.conf
+```
 
-# 修正後
-[[ "$cidr" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$ ]] || continue
+### 2-2. 置換を適用する
+
+```bash
+sudo sed -i 's/\\\\\\\\/\\/g' /usr/local/sbin/update-cf-ipset.sh
+```
+
+> この置換は事前に手元で検証済み。適用後のファイルは
+> **dev の正しい版と完全一致**し、本番の Webhook URL は保持される。
+
+### 2-3. 適用結果を確認する
+
+```bash
+# 構文チェック
+sudo bash -n /usr/local/sbin/update-cf-ipset.sh && echo "構文OK"
+
+# 109 行目が正しくなったか
+sed -n '109p' /usr/local/sbin/update-cf-ipset.sh
+```
+
+期待する出力:
+
+```
+  [[ "$cidr" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$ ]] || continue
 ```
 
 ```bash
-ssh -t onb-dify 'sudo cp /usr/local/sbin/update-cf-ipset.sh{,.bak-20261014} && \
-  sudo sed -i "109s/\\\\\\\\\\\\\\\\\\./\\\\./" /usr/local/sbin/update-cf-ipset.sh && \
-  sed -n "109p" /usr/local/sbin/update-cf-ipset.sh'
+# 4 連バックスラッシュが残っていないか（0 になること）
+grep -c '\\\\\\\\' /usr/local/sbin/update-cf-ipset.sh
 ```
 
-> sed のエスケープが煩雑なため、**`vi` で直接書き換えるほうが確実**。
-> 置換後に 109 行目が `\.` 1 つになっていることを必ず目視確認する。
-
-### 2-2. Slack 通知の修正
-
-`slack_error()` 内の `curl` も同じエスケープ崩れで動作していない。
-行継続の `\\\\` を `\` に直す。**通知が復旧しないと、次に壊れたときも気づけない。**
-
-### 2-3. 動作確認（ここが本番反映になる）
+### 2-4. 手動実行する（ここで ipset が実際に更新される）
 
 ```bash
-ssh -t onb-dify 'sudo /usr/local/sbin/update-cf-ipset.sh'
-# 期待する出力: [OK] updated: v4=14, v6=…
-
-ssh -t onb-dify 'sudo ipset list cf4 | head -25'
+sudo /usr/local/sbin/update-cf-ipset.sh
 ```
 
-`ipset swap` は**アトミックに入れ替わる**ため、この操作で通信が途切れることはない。
+**期待する出力: `[OK] updated: v4=15, v6=7`**
 
-実行後、Cloudflare 経由で Dify が正常に表示されることを確認する。
+`ipset swap` はアトミックに入れ替わるため、**この操作で通信が途切れることはない**。
+
+```bash
+sudo ipset list cf4 | grep "Number of entries"
+sudo ipset list cf6 | grep "Number of entries"
+```
+
+実行後、**Cloudflare 経由で Dify が正常に表示されること**を確認する。
 
 ---
 
-## 手順 3: DOCKER-USER ルールの永続化（優先度: 高）
+## 手順 3: ルールの永続化（優先度: 高）
 
-再起動でルールが消える問題への対応。手順書の「永続化」節をベースに、
-**`cf4` が空のときはルールを入れない安全装置**を追加する。
+**手順 2 が成功してから実施する。** `cf4` が空のまま永続化すると、
+再起動時に Cloudflare 経由を含む全アクセスが遮断される。
 
-dev には動作実績のある `docker-user-fw.service` があるが、
-**`cf4` が空でも DROP を入れてしまう**弱点と、`update-cf-ipset.service` との
-順序指定が無い問題、`-i ens3` 指定が無い問題があるため、そのままは使わない。
+### 3-1. 適用スクリプトを作る
 
 ```bash
-sudo tee /etc/systemd/system/docker-user-fw.service <<'EOF'
+sudo vi /usr/local/sbin/apply-docker-user-fw.sh
+```
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+NIC=ens3
+MIN=10
+
+# cf4 が空のまま DROP を入れると Cloudflare 経由も落ちるため中断する
+cnt="$(ipset list cf4 2>/dev/null | awk '/^Number of entries:/ {print $4+0; exit}')"
+cnt="${cnt:-0}"
+if [[ "$cnt" -lt "$MIN" ]]; then
+  echo "cf4 has too few entries ($cnt); refusing to apply DROP rules" >&2
+  exit 1
+fi
+
+# 1: Cloudflare からの 80/443 を許可
+iptables -C DOCKER-USER -i "$NIC" -p tcp -m set --match-set cf4 src -m multiport --dports 80,443 -j RETURN 2>/dev/null \
+  || iptables -I DOCKER-USER 1 -i "$NIC" -p tcp -m set --match-set cf4 src -m multiport --dports 80,443 -j RETURN
+
+# 2: それ以外の 80/443 は破棄
+iptables -C DOCKER-USER -i "$NIC" -p tcp -m multiport --dports 80,443 -j DROP 2>/dev/null \
+  || iptables -I DOCKER-USER 2 -i "$NIC" -p tcp -m multiport --dports 80,443 -j DROP
+
+echo "[OK] DOCKER-USER rules applied (cf4=$cnt)"
+```
+
+```bash
+sudo chmod +x /usr/local/sbin/apply-docker-user-fw.sh
+```
+
+- **`iptables -C` で既存を確認してから挿入する**ため、何度実行してもルールは重複しない
+- **`cf4` が 10 件未満なら何もせず異常終了する。** 全遮断の事故を防ぐための安全装置
+- NAT Gateway・VPN の許可ルールは**設計上不要**（IP 制限は Cloudflare 側で実施）
+
+### 3-2. systemd ユニットを作る
+
+```bash
+sudo vi /etc/systemd/system/docker-user-fw.service
+```
+
+```ini
 [Unit]
 Description=Apply DOCKER-USER Cloudflare allowlist
 After=docker.service network-online.target update-cf-ipset.service
 Wants=network-online.target
-Requires=update-cf-ipset.service
+Requires=docker.service update-cf-ipset.service
 
 [Service]
 Type=oneshot
@@ -137,79 +201,98 @@ ExecStart=/usr/local/sbin/apply-docker-user-fw.sh
 
 [Install]
 WantedBy=multi-user.target
-EOF
 ```
 
-適用スクリプト本体。**`cf4` が空なら何もせず異常終了**させ、全遮断を防ぐ。
+**`Requires=update-cf-ipset.service` が重要。** ipset の復元が失敗した場合は
+このユニットも起動せず、DROP ルールが入らない。
+**可用性を優先する倒れ方**であり、オリジンの秘密ヘッダ検証が残るため無防備にはならない。
+
+dev の既存ユニットには**この順序指定と安全装置が無い**ため、そのまま移植していない。
+
+### 3-3. 有効化する
 
 ```bash
-sudo tee /usr/local/sbin/apply-docker-user-fw.sh <<'EOF'
-#!/usr/bin/env bash
-set -euo pipefail
-
-NIC=ens3
-NAT_GW=3.113.105.121
-
-# cf4 が空のまま DROP を入れると Cloudflare 経由も落ちるため中断する
-cnt="$(ipset list cf4 2>/dev/null | awk '/^Number of entries:/ {print $4+0; exit}')"
-if [[ "${cnt:-0}" -lt 10 ]]; then
-  echo "cf4 has too few entries ($cnt); refusing to apply DROP rules" >&2
-  exit 1
-fi
-
-add_rule() {  # 冪等に挿入する
-  iptables -C "$@" 2>/dev/null || iptables -I "$@"
-}
-
-# 1: Cloudflare からの 80/443 を許可
-add_rule DOCKER-USER 1 -i "$NIC" -p tcp -m set --match-set cf4 src -m multiport --dports 80,443 -j RETURN
-# 2: NAT Gateway からの 80/443 を許可（DNSキャッシュでCF経由にならない経路の救済）
-add_rule DOCKER-USER 2 -i "$NIC" -p tcp -s "$NAT_GW" -m multiport --dports 80,443 -j RETURN
-# 3: それ以外の 80/443 は破棄
-add_rule DOCKER-USER 3 -i "$NIC" -p tcp -m multiport --dports 80,443 -j DROP
-
-echo "[OK] DOCKER-USER rules applied (cf4=$cnt)"
-EOF
-
-sudo chmod +x /usr/local/sbin/apply-docker-user-fw.sh
 sudo systemctl daemon-reload
 sudo systemctl enable --now docker-user-fw.service
+sudo systemctl status docker-user-fw.service --no-pager
 ```
 
-> **手順 1 で確認した実際のルールに合わせること。**
-> VPN 用の許可ルールが存在していた場合は、このスクリプトにも必ず追加する。
-> 漏らすと再起動後に VPN から Dify へ到達できなくなる。
-
-### 確認
+`Active: active (exited)` かつ `[OK] DOCKER-USER rules applied (cf4=15)` が出ればよい。
 
 ```bash
-ssh -t onb-dify 'sudo iptables -L DOCKER-USER -n -v --line-numbers'
-ssh -t onb-dify 'systemctl status docker-user-fw.service --no-pager'
+sudo iptables -L DOCKER-USER -n -v --line-numbers
 ```
+
+**ルールが 2 本のままで、重複していないこと**を確認する。
 
 ---
 
-## 手順 4: 起動時 ipset 復元の復旧確認（優先度: 高）
+## 手順 4: 再起動テスト（優先度: 高）
 
-手順 2 でスクリプトが直れば、失敗していた `update-cf-ipset.service` も通るようになる。
+**手順 3 までで「再起動しても残る設定」は入ったが、実際に残るかは再起動しないと分からない。**
+現在 Dify の利用者がいないため、**検証に適したタイミング**。
+
+### 4-1. 再起動前の状態を記録する
 
 ```bash
-ssh -t onb-dify 'sudo systemctl restart update-cf-ipset.service && systemctl status update-cf-ipset.service --no-pager'
+sudo iptables -L DOCKER-USER -n -v --line-numbers
+sudo ipset list cf4 | grep "Number of entries"
+sudo systemctl is-enabled update-cf-ipset.service docker-user-fw.service
 ```
 
-`Active: active (exited)` かつ `status=0` になることを確認する。
-
-### 再起動テストの扱い
-
-**本番稼働中のため、再起動検証は計画的に行う。**
-実施する場合は Dify 利用者への事前アナウンスの上、再起動後に次を確認する。
+### 4-2. 再起動する
 
 ```bash
-ssh onb-dify 'systemctl is-active update-cf-ipset.service docker-user-fw.service'
-ssh -t onb-dify 'sudo ipset list cf4 | grep "Number of entries"'
-ssh -t onb-dify 'sudo iptables -L DOCKER-USER -n -v --line-numbers'
-# 外部から直叩きが落ちること
-nc -z -G 5 -w 5 -v 162.43.85.203 443   # → タイムアウトすれば正常
+sudo reboot
+```
+
+2〜3 分待ってから再接続する。
+
+### 4-3. 復旧を確認する
+
+```bash
+ssh onb-dify
+```
+
+```bash
+# サービスが成功しているか
+systemctl status update-cf-ipset.service --no-pager | head -5
+systemctl status docker-user-fw.service --no-pager | head -5
+
+# ipset が復元されているか（15 件）
+sudo ipset list cf4 | grep "Number of entries"
+
+# ルールが復元されているか（2 本）
+sudo iptables -L DOCKER-USER -n -v --line-numbers
+
+# Dify が起動しているか
+sudo docker ps --format "{{.Names}}\t{{.Status}}"
+
+# 秘密ヘッダ検証が残っているか
+curl -s -o /dev/null -w "ヘッダ無し: %{http_code}\n" -H "Host: dify-stands.com" http://127.0.0.1/
+# → 403 なら正常
+```
+
+作業端末からも確認する。
+
+```bash
+curl -sS -m 15 -o /dev/null -w "%{http_code}\n" -L https://dify-stands.com/   # → 200
+nc -z -G 5 -w 5 -v 162.43.85.203 443                                          # → タイムアウト
+```
+
+### 4-4. 失敗したときの応急処置
+
+`docker-user-fw.service` が起動していない場合、手動で適用できる。
+
+```bash
+sudo /usr/local/sbin/update-cf-ipset.sh      # ipset を復元
+sudo /usr/local/sbin/apply-docker-user-fw.sh # ルールを適用
+```
+
+原因は `journalctl` で追う。
+
+```bash
+sudo journalctl -u update-cf-ipset.service -u docker-user-fw.service -b --no-pager
 ```
 
 ---

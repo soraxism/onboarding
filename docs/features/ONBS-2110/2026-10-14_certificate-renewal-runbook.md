@@ -1,8 +1,63 @@
 # オリジン証明書の失効対応手順
 
+**ステータス: 2026-10-14 対応完了**
+
 作成日: 2026-10-14
 対象: `onb-dify`（`162.43.85.203`）/ `dify-stands.com`
 前提: [調査結果](./2026-10-14_cloudflare-origin-protection-audit.md)
+
+---
+
+## 実施結果（2026-10-14）
+
+| 項目 | 結果 |
+| --- | --- |
+| 証明書 | **2026-10-14 取得 / 2027-01-12 まで有効**（Let's Encrypt YE2） |
+| ホストの `certbot.timer` | `disabled` / `inactive`（失敗ループを停止） |
+| 自動更新 | `/usr/local/sbin/dify-cert-renew.sh` + `/etc/cron.d/dify-cert-renew`（毎日 03:30） |
+| 既存の防御 | 秘密ヘッダ検証・iptables ルールとも**維持**（403 / 直叩きタイムアウトを確認） |
+
+**作業中に Cloudflare の WAF カスタムルールが ACME チャレンジを 403 でブロックしていることが判明し、
+Skip ルール `allow-acme-challenge` を追加した**（詳細は下記「Cloudflare 側の例外ルール」）。
+
+---
+
+## 【重要】Cloudflare 側の例外ルール
+
+**`allow-acme-challenge` は証明書更新のために意図的に開けた穴。消すと更新できなくなる。**
+
+| 項目 | 内容 |
+| --- | --- |
+| 場所 | Cloudflare → `dify-stands.com` → セキュリティ → WAF → カスタムルール |
+| ルール名 | `allow-acme-challenge` |
+| 式 | `starts_with(http.request.uri.path, "/.well-known/acme-challenge/")` |
+| アクション | スキップ → 残りのカスタムルール |
+| 優先順位 | **最上位**（ブロックルールより上） |
+
+### なぜ必要か
+
+このゾーンには**送信元 IP でアクセスを制限する WAF カスタムルール**がある
+（BE・VPN からのみ許可する構成）。
+一方 **Let's Encrypt の検証サーバーは世界中の任意の IP から来る**ため、
+このルールに引っかかって 403 となり、HTTP-01 チャレンジが成立しなかった。
+
+**Let's Encrypt は検証元 IP のリストを公開していない**ため、IP の許可リストに
+追加する方法は採れない。パスで例外を作る必要がある。
+
+### リスク評価
+
+**実害はほぼ無い。**
+
+- 配信されるのは certbot が一時的に置くランダムなトークンファイルのみ
+- Dify のコンテンツや API には到達できない
+- **オリジン側の秘密ヘッダ検証は引き続き有効**（Transform Rule は別フェーズのため、
+  「残りのカスタムルール」をスキップしても `X-Origin-Auth` は付与される）
+
+### 将来この例外を無くすには
+
+**DNS-01 チャレンジへ移行する**と、HTTP の到達性が一切不要になりこのルールは削除できる。
+`certbot/dns-cloudflare` イメージへの変更と、Cloudflare API トークン
+（権限は Zone → DNS → Edit のみ）が必要。
 
 ---
 
@@ -109,7 +164,7 @@ CERTBOT_EMAIL=developer@onboarding-app.io
 | ホスト certbot を webroot に変更 | ストアが 2 つ残り、コピー処理が必要で煩雑 |
 | DNS-01（Cloudflare プラグイン） | 最も堅く 80 番に依存しないが、プラグイン導入と API トークンが必要。**将来の移行先として残す** |
 
-### 検証が通る理由
+### 検証が通る条件（当初の想定と実際）
 
 Let's Encrypt の検証リクエストは次の経路で届く。
 
@@ -120,6 +175,27 @@ Let's Encrypt → DNS解決 → Cloudflare → オリジン(nginx) → /var/www/
 - Cloudflare 経由なので **`cf4` の許可に合致する**
 - Cloudflare が `X-Origin-Auth` を付与するため、**秘密ヘッダ検証も通過する**
 - `NGINX_ENABLE_CERTBOT_CHALLENGE=true` により nginx が `/.well-known/acme-challenge/` を配信する
+
+**ただし実際には、これらの手前にある Cloudflare の WAF カスタムルールで
+403 になっていた**（上記「Cloudflare 側の例外ルール」を参照）。
+オリジンまで到達すらしていなかった。
+
+#### 切り分けのポイント
+
+作業端末からのテストでは ACME パスが **404**（＝通過）を返す一方、
+Let's Encrypt からは **403** だった。**送信元 IP だけが違う**ことから
+Cloudflare 側の IP ベース制限を疑い、セキュリティイベントで確定させた。
+
+**作業端末が許可済み IP に該当していたため、手元のテストでは問題が再現しなかった。**
+この種の切り分けでは「自分のテストが通ること」を根拠にしないよう注意する。
+
+#### 検証は複数拠点から行われる
+
+Skip ルール追加の直後は、3 拠点中 2 拠点が 200、1 拠点が 403 となり
+`During secondary validation` で失敗した。**Cloudflare のルールが全エッジに
+行き渡るまでの時間差**が原因で、数分待って再実行したら成功した。
+
+ルールを変更した直後に certbot を走らせない。
 
 ---
 

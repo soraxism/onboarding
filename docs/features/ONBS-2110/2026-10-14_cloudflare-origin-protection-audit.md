@@ -311,7 +311,17 @@ IP 直叩きという攻撃面自体が消滅する。ただし Dify の配置�
 いずれも **Dify 前段の nginx はコンテナ内**にあるため、
 ボリュームマウントか compose の構成変更が必要。別途調査の上で実施する。
 
-### 【重大】オリジンの証明書が 283 日前に失効している
+### 【重大】オリジンの証明書が 283 日前に失効している【2026-10-14 対応済み】
+
+> **対応済み。** Dify の certbot コンテナ（webroot）で再取得し、**2027-01-12 まで有効**。
+> ホストの `certbot.timer` は `disabled` にして失敗ループを停止。
+> 自動更新を `/etc/cron.d/dify-cert-renew`（毎日 03:30）で仕込んだ。
+> 手順と詳細は [2026-10-14_certificate-renewal-runbook.md](./2026-10-14_certificate-renewal-runbook.md)。
+>
+> **作業中に Cloudflare の WAF カスタムルールが ACME チャレンジを 403 でブロックしている
+> ことが判明し、Skip ルール `allow-acme-challenge` を追加した。
+> このルールは消すと証明書を更新できなくなる。**
+
 
 ```
 subject : CN = dify-stands.com

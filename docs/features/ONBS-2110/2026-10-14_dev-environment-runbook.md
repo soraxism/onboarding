@@ -74,14 +74,23 @@ Cloudflare の SSL/TLS モードが **「フル」**（オリジンの証明書�
 
 **`.env` の `CERTBOT_DOMAIN` を変えた直後に nginx を再起動してはいけない。**
 
-Dify の nginx は `CERTBOT_DOMAIN` から証明書のパスを組み立てる。
+Dify の nginx entrypoint は `CERTBOT_DOMAIN` から証明書のパスを組み立てる。
+**証明書が存在しない場合はフォールバックする。**
 
-```
-/etc/letsencrypt/live/${CERTBOT_DOMAIN}/fullchain.pem
+```sh
+if [ -n "${CERTBOT_DOMAIN}" ] && [ -f "/etc/letsencrypt/live/${CERTBOT_DOMAIN}/fullchain.pem" ] && \
+   [ -f "/etc/letsencrypt/live/${CERTBOT_DOMAIN}/privkey.pem" ]; then
+    SSL_CERTIFICATE_PATH="/etc/letsencrypt/live/${CERTBOT_DOMAIN}/fullchain.pem"
+else
+    SSL_CERTIFICATE_PATH="/etc/ssl/fullchain.pem"      # ← フォールバック
+fi
 ```
 
-新しいドメインの証明書を取得する前に nginx を再起動すると、
-**存在しないパスを読もうとして起動に失敗し、dev が落ちる。**
+したがって即座にクラッシュはしないが、**フォールバック先の
+`/root/dify/docker/nginx/ssl/fullchain.pem` が無ければ nginx は起動に失敗する**。
+あっても、意図しない証明書（自己署名のプレースホルダ等）で起動してしまう。
+
+**どちらにしても望ましくないため、証明書を取得してから nginx を再起動する。**
 
 ```
 1. .env を変更          （nginx は再起動しない → 旧設定のまま動き続ける）
@@ -122,7 +131,17 @@ CERTBOT_DOMAIN=dev.dify-stands.com
 > `NGINX_HTTPS_ENABLED=true` もそのまま。
 
 ```bash
-grep -E '^(CERTBOT_DOMAIN|NGINX_SERVER_NAME|NGINX_ENABLE_CERTBOT_CHALLENGE)' .env
+grep -E '^(CERTBOT_DOMAIN|NGINX_SERVER_NAME|NGINX_ENABLE_CERTBOT_CHALLENGE|NGINX_SSL_CERT)' .env
+```
+
+確認済みの値（2026-10-14 時点）:
+
+```ini
+NGINX_SERVER_NAME=_                      # ワイルドカード。変更不要
+NGINX_HTTPS_ENABLED=true
+NGINX_ENABLE_CERTBOT_CHALLENGE=true      # ACME チャレンジの配信が有効
+NGINX_SSL_CERT_FILENAME=fullchain.pem
+NGINX_SSL_CERT_KEY_FILENAME=privkey.pem
 ```
 
 **この時点では nginx を再起動しない。** 旧証明書のまま動き続ける。
@@ -164,6 +183,12 @@ ls -la volumes/certbot/conf/live/dev.dify-stands.com/
 ### 5. nginx を再起動する
 
 **証明書の取得に成功してから実行する。**
+
+再起動前にフォールバック先の有無を見ておくと、万一のときの挙動が予測できる。
+
+```bash
+ls -la /root/dify/docker/nginx/ssl/
+```
 
 ```bash
 docker compose restart nginx

@@ -151,6 +151,37 @@ curl -s -o /dev/null -w "%{http_code}\n" https://api.onboarding-app.io/tools/acc
 curl -s -o /dev/null -w "%{http_code}\n" https://api.onboarding-app.io/v1/onboarding-init
 ```
 
+#### 配信 API にパラメータなしのリクエストを投げないこと
+
+**`/decision` `/embed` `/v1/targets` へパラメータ無しで GET すると Lambda が 500 を返し、
+CloudWatch アラームが `@channel` で発報する。**
+
+| アラーム | 条件 |
+| --- | --- |
+| `TEPCO_DECISION_CloudWatch_Alarms` | `onboarding-api-prod` の `(GET)/decision` で 1 時間以内に 1 件以上の 500 |
+| `TEPCO_EMBED_CloudWatch_Alarms` | 同 `(GET)/embed` |
+| `TEPCO_TARGETS_CloudWatch_Alarms` | 同 `(GET)/v1/targets` |
+
+2026-10-15 の作業で、リソースポリシーが配信 API を拒否していないことを確かめようとして
+execute-api に直接 GET を投げ、3 つとも発報させた（Decision 3 件 / Embed 2 件 / Targets 2 件）。
+データ変更は無く顧客影響も無いが、不要な通知を飛ばすことになる。
+
+**リソースポリシーの適用範囲は実リクエストを投げずに確認できる。**
+
+```bash
+aws apigateway get-rest-api --region ap-northeast-1 --rest-api-id 4gg04tjv40 --query 'policy' --output text
+```
+
+遮断されているかを実リクエストで判定する必要がある場合は、レスポンス本文で切り分ける。
+
+| 本文 | 意味 |
+| --- | --- |
+| `{"Message":"User: anonymous is not authorized to perform: execute-api:Invoke..."}` | リソースポリシーによる Deny |
+| `{"message":"Missing Authentication Token"}` | パス・メソッドの組み合わせが存在しない（POST 専用を GET した等） |
+| `{"message": "Internal server error"}` | **Lambda まで到達している**（＝ Deny されていない）。ただしこれがアラームの原因になる |
+
+アラームは発生から 1 時間で OK に戻る。
+
 **`api.onboarding-app.io/tools/*` は VPN 内からも 403 になる。** 送信元が Cloudflare の IP になるため。
 これは設計どおりで、管理ツールは専用ドメインを向くよう変更済み。
 

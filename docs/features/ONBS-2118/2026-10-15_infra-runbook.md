@@ -49,6 +49,18 @@ aws apigateway create-domain-name --region ap-northeast-1 \
 
 出力される `d-xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com` を 1-3 で使う。
 
+**`CreateDomainName` はレート制限が厳しい。** 連続で叩くと `TooManyRequestsException` になるため、
+prod と dev は間隔を空けて 1 件ずつ実行する。
+
+#### 実施状況（2026-10-15）
+
+| ドメイン | 状態 | regionalDomainName |
+| --- | --- | --- |
+| `tools-api.onboarding-app.io` | **作成済み・マッピング済み**（prod / `4gg04tjv40`） | `d-1wjm068e34.execute-api.ap-northeast-1.amazonaws.com` |
+| `dev-tools-api.onboarding-app.io` | **作成済み・マッピング済み**（dev / `typ566gsc5`） | `d-c3lkajncv1.execute-api.ap-northeast-1.amazonaws.com` |
+
+1-1 と 1-2 は実施済み。**次は 1-3 の Cloudflare DNS 登録（管理画面作業）。**
+
 ### 1-2. ベースパスマッピングを作る
 
 ```bash

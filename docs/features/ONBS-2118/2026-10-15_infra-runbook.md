@@ -71,23 +71,42 @@ aws apigateway create-base-path-mapping --region ap-northeast-1 \
   --domain-name dev-tools-api.onboarding-app.io --rest-api-id typ566gsc5 --stage dev
 ```
 
-### 1-3. Cloudflare に DNS を登録する（管理画面）
+### 1-3. Route53 に DNS を登録する
 
-| 項目 | 値 |
-| --- | --- |
-| タイプ | CNAME |
-| 名前 | `tools-api` / `dev-tools-api` |
-| 内容 | 1-1 で得た `d-xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com` |
-| プロキシ | **DNS only（グレークラウド）** |
+**Cloudflare の管理画面ではなく Route53 で行う。**
 
-**オレンジクラウド（プロキシ）にしないこと。** プロキシすると API Gateway から見た送信元が
-Cloudflare のエッジ IP になり、リソースポリシーが VPN の IP を判定できず全て拒否される。
+`onboarding-app.io` は **Route53 が権威 DNS** で、Cloudflare は CNAME setup（partial）により
+特定ホストのみを経由させている。ゾーン内に 2 つのパターンが混在している。
 
-反映確認。
+| パターン | レコード型 | 例 | Cloudflare |
+| --- | --- | --- | --- |
+| `*.cdn.cloudflare.net` を指す | CNAME | `api` / `dev-api` / `v2api` / `dev-v2api` | **経由する** |
+| API Gateway を指す ALIAS | A | `editor-api` / `manage-api` / `viewer-api` / `screenshot-api` | **経由しない** |
+
+管理ツール専用ドメインは Cloudflare を経由させたくないため、**後者（ALIAS）と同じ形で作る**。
+この構成では「プロキシを DNS only にする」操作自体が不要で、Cloudflare 側の作業は発生しない。
+
+`Z1YSHQZHG15GKL` は API Gateway（ap-northeast-1）のホストゾーン ID で、既存の `editor-api` と同一。
 
 ```bash
-dig +short tools-api.onboarding-app.io      # d-xxxx... が返り、Cloudflare の IP でないこと
+aws route53 change-resource-record-sets --hosted-zone-id ZHAD232M1QO6V --change-batch '{
+  "Comment": "ONBS-2118 管理ツール専用ドメイン(Cloudflare非経由)",
+  "Changes": [
+    {"Action":"CREATE","ResourceRecordSet":{"Name":"tools-api.onboarding-app.io","Type":"A","AliasTarget":{"HostedZoneId":"Z1YSHQZHG15GKL","DNSName":"d-1wjm068e34.execute-api.ap-northeast-1.amazonaws.com.","EvaluateTargetHealth":true}}},
+    {"Action":"CREATE","ResourceRecordSet":{"Name":"dev-tools-api.onboarding-app.io","Type":"A","AliasTarget":{"HostedZoneId":"Z1YSHQZHG15GKL","DNSName":"d-c3lkajncv1.execute-api.ap-northeast-1.amazonaws.com.","EvaluateTargetHealth":true}}}
+  ]
+}'
 ```
+
+反映確認。Cloudflare の IP（`104.x` / `172.66.x`）ではなく API Gateway の IP が返ること。
+
+```bash
+dig +short tools-api.onboarding-app.io
+dig +short dev-tools-api.onboarding-app.io
+curl -s -o /dev/null -w "%{http_code}\n" https://tools-api.onboarding-app.io/tools/accounts
+```
+
+ロールバックは同じ change-batch の `"Action"` を `"DELETE"` に変えて実行する。
 
 ### 1-4. デプロイ
 

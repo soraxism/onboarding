@@ -37,6 +37,7 @@ node docs/testing/scripts/check-access.mjs
 | [CLAUDE.md](./CLAUDE.md) | ブランチ運用・リリース手順・ドキュメントの残し方。**作業前に読む** |
 | [docs/testing/](./docs/testing/) | dev 環境での動作確認（環境情報・手順書・スクリプト） |
 | [docs/features/](./docs/features/) | チケットごとの調査・設計・テスト項目書（`features/{Jiraチケット番号}/`） |
+| [docs/architecture/](./docs/architecture/) | 構成図（draw.io）とその作成メモ。チケットに紐づかない横断資料 |
 | `{プロダクト名}/` | 各プロダクトのリポジトリ（このリポジトリの管理対象外） |
 
 ## docs/features/ に置くもの

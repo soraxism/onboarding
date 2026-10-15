@@ -35,7 +35,7 @@
         <mxCell id="aBox" value="エンドユーザーのブラウザ（貴社 Web サイト）" style="rounded=1;arcSize=2;html=1;fillColor=#F5F7FA;strokeColor=#CBD2D9;strokeWidth=1.5;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#3E4C59;" vertex="1" parent="1">
           <mxGeometry x="20" y="120" width="1120" height="305" as="geometry" />
         </mxCell>
-        <mxCell id="a5" value="&lt;b&gt;画面に表示されるガイド UI&lt;/b&gt;&lt;br&gt;ランチャー／ガイドステップ／ツールチップ／ヒント／ポップアップ／カスタムレイヤーの独自 UI&lt;br&gt;&lt;br&gt;貴社サイトの既存の画面構造は変更せず、上に重ねて表示します" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=11;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+        <mxCell id="a5" value="&lt;b&gt;画面に表示されるガイド UI&lt;/b&gt;&lt;br&gt;ランチャー／ツアー／ヒント／ポップアップ／カスタムレイヤーの独自 UI&lt;br&gt;&lt;br&gt;貴社サイトの既存の画面構造は変更せず、上に重ねて表示します" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=11;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
           <mxGeometry x="40" y="165" width="1080" height="100" as="geometry" />
         </mxCell>
         <mxCell id="a1" value="&lt;b&gt;① 埋め込みタグ&lt;/b&gt;&lt;br&gt;&lt;br&gt;貴社サイトに設置する script タグ&lt;br&gt;アカウント ID・プロダクト ID を指定して &lt;b&gt;/embed&lt;/b&gt; を読み込む" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=11;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
@@ -55,13 +55,10 @@
           <mxGeometry x="1160" y="120" width="380" height="305" as="geometry" />
         </mxCell>
         <mxCell id="b1" value="&lt;b&gt;管理画面&lt;/b&gt;&lt;br&gt;ガイドの作成・セグメント（配信対象）設定・レポート閲覧" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=11;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
-          <mxGeometry x="1178" y="165" width="344" height="78" as="geometry" />
+          <mxGeometry x="1178" y="170" width="344" height="110" as="geometry" />
         </mxCell>
         <mxCell id="b2" value="&lt;b&gt;エディタ拡張／プレビュー拡張&lt;/b&gt;&lt;br&gt;実際の画面上でのガイド作成と、公開前の表示確認" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=11;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
-          <mxGeometry x="1178" y="253" width="344" height="78" as="geometry" />
-        </mxCell>
-        <mxCell id="b3" value="&lt;b&gt;アカウント管理ツール（弊社）&lt;/b&gt;&lt;br&gt;アカウント・プロダクトの登録、配信設定の反映" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=11;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
-          <mxGeometry x="1178" y="341" width="344" height="66" as="geometry" />
+          <mxGeometry x="1178" y="295" width="344" height="110" as="geometry" />
         </mxCell>
 
         <mxCell id="cBox" value="Onboarding 配信基盤" style="rounded=1;arcSize=2;html=1;fillColor=#F5F7FA;strokeColor=#CBD2D9;strokeWidth=1.5;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#3E4C59;" vertex="1" parent="1">

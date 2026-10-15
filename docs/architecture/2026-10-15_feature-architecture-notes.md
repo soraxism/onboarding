@@ -85,3 +85,74 @@ PDF にする場合は `--format pdf` を指定する。ページサイズは 16
 - [ ] 強調（橙）の範囲が提出先の契約内容と合っているか。**別のクライアントへ出すときは強調箇所を付け替える**
 - [ ] 「※ 貴社では未使用」の記載が実態と合っているか（AI 機能・新方式・Chrome 拡張）
 - [ ] 社名・固有名を入れる必要があるか（現状は「貴社」表記のまま）
+
+---
+
+# 配信タグ方式（onboarding-init）のパターン別構成図
+
+- 図: [2026-10-15_onboarding-feature-architecture-patterns.drawio](./2026-10-15_onboarding-feature-architecture-patterns.drawio)（4 ページ）
+- 生成スクリプト: [scripts/build-pattern-diagrams.py](./scripts/build-pattern-diagrams.py)
+
+`/embed`・`/decision` を使わない**標準の配信タグ方式**のクライアント向け。
+オプションの組み合わせで 4 パターンを 1 ファイルの別ページとして持つ。
+
+| ページ | カスタムレイヤー | AI |
+| --- | --- | --- |
+| 1. ガイドのみ | – | – |
+| 2. ガイド＋AI | – | ○ |
+| 3. ガイド＋カスタムレイヤー | ○ | – |
+| 4. ガイド＋カスタムレイヤー＋AI | ○ | ○ |
+
+**ガイド＝ツアー・ポップアップ・ヒント・フロート**として記載している。
+
+## 図の根拠
+
+### 初期化 API（`onboarding-api/src/functions/v2/onboarding-init/handler.py`）
+
+GET。`aid` / `pid` / `location_href` が必須。
+
+1. 許可ドメインの認証（不一致は 403）
+2. `targets` から `TOUR` / `HINT` を取り出し、URL・訪問者属性・デバイスで表示対象を絞り込む
+3. ポップアップを DB から取得、AI チャット設定を `get_ai_chats` で取得
+4. `guide_data`（tour / hint）・popups・ai_chats をまとめて JSON で返す
+
+**ツアー・ポップアップ・ヒント・AI チャット設定が 1 回の呼び出しで返る**のが旧方式との大きな違い。
+旧方式は `/embed`（初期化スクリプトの生成）と `/decision`（ガイド定義の取得）に分かれている。
+
+### AI（`Onboarding-AI-API` / `Onboarding-AI-Server`）
+
+| 用途 | 接続先 | 実体 |
+| --- | --- | --- |
+| AI チャット | `wss://v2ai.onboarding-app.io`（dev は `dev-v2ai.…`） | FastAPI / ECS Fargate。OpenAI・Dify と連携 |
+| AI ヒント・AI チャット | API Gateway WebSocket `ai-websocket-{stage}` | Lambda（`aiHint` / `aiChat`） |
+
+フロントのチャット UI は `@stands/onboarding-ai-chat`（`Onboarding-AI-Chat`）パッケージ。
+接続先の定義は `src/lib/constants/index.ts`。
+
+**AI のログ**は 1 リクエストごとに S3 へ CSV として出力され、日次バッチ（`onboarding-batch` の
+`ai-logs` / `ai-chat-logs` / `ai-chat-evaluation-logs`、JST 3 時）で 1 日分に集約される。
+図ではこれを「AI 応答基盤 → ログ集計・レポート生成 → ログ／レポートデータ」として描いている。
+
+## 更新のしかた
+
+パターンごとに箱の数が変わるため、**4 ページは手で書かずスクリプトで生成している**。
+文言やレイヤー構成を変えるときはスクリプトを直して再実行する。
+
+```bash
+python3 docs/architecture/scripts/build-pattern-diagrams.py
+```
+
+**draw.io で直接編集した内容は、再実行すると失われる。** 恒久的な修正はスクリプト側へ入れること。
+
+画像の書き出しはページ単位。**`--page-index` は 1 始まり**（0 を渡すとエラーになる）。
+
+```bash
+drawio --export --format png --scale 1.25 --border 10 --page-index 1 \
+  --output pattern1.png docs/architecture/2026-10-15_onboarding-feature-architecture-patterns.drawio
+```
+
+## 提出前に確認すること
+
+- [ ] 提出先の契約内容に合うページを選んでいるか（**ファイルごと渡すと 4 パターンすべてが見える**）
+- [ ] カスタムレイヤーの有無・AI の有無が実態と合っているか
+- [ ] 旧方式（`/embed`・`/decision`）のクライアントには、こちらではなく強調版の図を使う

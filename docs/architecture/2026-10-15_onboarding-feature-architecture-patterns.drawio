@@ -1,0 +1,706 @@
+<mxfile host="app.diagrams.net" agent="Claude Code" version="24.7.17">
+  <diagram id="pattern-1. ガイドのみ" name="1. ガイドのみ">
+    <mxGraphModel dx="1600" dy="1200" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="Onboarding 機能構成図 ｜ ガイドのみ" style="text;html=1;align=left;verticalAlign=middle;fontSize=22;fontStyle=1;fontColor=#1F2933;" vertex="1" parent="1">
+          <mxGeometry x="20" y="14" width="700" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="配信タグ方式（onboarding-init）　／　ガイド＝ツアー・ポップアップ・ヒント・フロート　／　2026-10-15 時点" style="text;html=1;align=left;verticalAlign=middle;fontSize=11.5;fontColor=#52606D;" vertex="1" parent="1">
+          <mxGeometry x="22" y="56" width="660" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="flowNote" value="&lt;b&gt;貴社サイトでの動作の流れ&lt;/b&gt;&lt;br&gt;① 配信タグが配信 CDN から初期化スクリプト・ガイド本体（JS / CSS）を読み込む&lt;br&gt;② 初期化 API へ、訪問者・ページに応じて表示するガイドを問い合わせ&lt;br&gt;③ ガイドの表示・操作ログを計測ビーコンへ送信" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=1.6;align=left;verticalAlign=top;spacingLeft=12;spacingTop=6;fontSize=10;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="740" y="10" width="460" height="104" as="geometry" />
+        </mxCell>
+        <mxCell id="legend" value="&lt;b&gt;凡例&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;矢印は主要なデータの流れを示します" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#CBD2D9;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=12;spacingTop=6;fontSize=10.5;fontColor=#52606D;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1220" y="10" width="320" height="104" as="geometry" />
+        </mxCell>
+        <mxCell id="legendSw1" value="" style="rounded=0;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1232" y="40" width="20" height="13" as="geometry" />
+        </mxCell>
+        <mxCell id="legendTx1" value="貴社サイトへの配信に関わる構成" style="text;html=1;align=left;verticalAlign=middle;fontSize=10.5;fontColor=#52606D;" vertex="1" parent="1">
+          <mxGeometry x="1258" y="39" width="270" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="legendSw2" value="" style="rounded=0;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;" vertex="1" parent="1">
+          <mxGeometry x="1232" y="58" width="20" height="13" as="geometry" />
+        </mxCell>
+        <mxCell id="legendTx2" value="弊社側の管理・運用" style="text;html=1;align=left;verticalAlign=middle;fontSize=10.5;fontColor=#52606D;" vertex="1" parent="1">
+          <mxGeometry x="1258" y="57" width="270" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="aBox" value="エンドユーザーのブラウザ（貴社 Web サイト）" style="rounded=1;arcSize=2;html=1;fillColor=#F5F7FA;strokeColor=#CBD2D9;strokeWidth=1.5;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#3E4C59;" vertex="1" parent="1">
+          <mxGeometry x="20" y="120" width="1120" height="305" as="geometry" />
+        </mxCell>
+        <mxCell id="a5" value="&lt;b&gt;画面に表示されるガイド UI&lt;/b&gt;&lt;br&gt;&lt;br&gt;ツアー／ポップアップ／ヒント／フロート&lt;br&gt;&lt;br&gt;貴社サイトの既存の画面構造は変更せず、上に重ねて表示します" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="165" width="1080" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="a1" value="&lt;b&gt;① 配信タグ&lt;/b&gt;&lt;br&gt;&lt;br&gt;貴社サイトに設置する script タグ 1 行&lt;br&gt;初期化スクリプト（onboarding-init.js）を読み込む" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="290" width="340" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="aNote" value="貴社サイトに設置いただくのは、この 1 行 のタグのみです。&lt;br&gt;既存ページの HTML・CSS・JavaScript の改修は必要ありません。" style="rounded=1;arcSize=6;html=1;dashed=1;dashPattern=6 4;fillColor=none;strokeColor=#B6BFC9;strokeWidth=1.2;align=left;verticalAlign=middle;spacingLeft=12;fontSize=10.5;fontColor=#52606D;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="400" y="290" width="720" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="bBox" value="運用（弊社・貴社ご担当者）" style="rounded=1;arcSize=2;html=1;fillColor=#F5F7FA;strokeColor=#CBD2D9;strokeWidth=1.5;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#3E4C59;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="120" width="380" height="305" as="geometry" />
+        </mxCell>
+        <mxCell id="b1" value="&lt;b&gt;管理画面&lt;/b&gt;&lt;br&gt;&lt;br&gt;ガイドの作成・表示条件の設定・レポート閲覧" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1178" y="170" width="344" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="b2" value="&lt;b&gt;エディタ拡張／プレビュー拡張&lt;/b&gt;&lt;br&gt;&lt;br&gt;実際の画面上でのガイド作成と、公開前の表示確認" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1178" y="295" width="344" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="cBox" value="Onboarding 配信基盤" style="rounded=1;arcSize=2;html=1;fillColor=#F5F7FA;strokeColor=#CBD2D9;strokeWidth=1.5;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#3E4C59;" vertex="1" parent="1">
+          <mxGeometry x="20" y="480" width="1120" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="cCdn" value="&lt;b&gt;配信アセット CDN&lt;/b&gt;&lt;br&gt;&lt;br&gt;初期化スクリプト&lt;br&gt;（onboarding-init.js）&lt;br&gt;ガイド本体の JS / CSS・テーマ&lt;br&gt;見た目を調整するカスタム CSS / JS" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="38" y="525" width="345" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="cInit" value="&lt;b&gt;初期化 API&lt;/b&gt;&lt;br&gt;&lt;br&gt;・許可ドメインの認証&lt;br&gt;・訪問者・ページによる表示判定&lt;br&gt;・ガイド定義の返却&lt;br&gt;　（ツアー／ポップアップ／&lt;br&gt;　　ヒント／フロート）" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="408" y="525" width="345" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="cBeacon" value="&lt;b&gt;計測ビーコン&lt;/b&gt;&lt;br&gt;&lt;br&gt;ガイドの表示・操作ログを受信" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="778" y="525" width="345" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="cpBox" value="管理・編集基盤" style="rounded=1;arcSize=2;html=1;fillColor=#F5F7FA;strokeColor=#CBD2D9;strokeWidth=1.5;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#3E4C59;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="480" width="380" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="cp1" value="&lt;b&gt;管理 API&lt;/b&gt;&lt;br&gt;&lt;br&gt;ガイド・表示条件・配信設定の管理" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1178" y="525" width="344" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="cp2" value="&lt;b&gt;編集／同期 API&lt;/b&gt;&lt;br&gt;&lt;br&gt;拡張機能からのガイド編集・同期" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1178" y="607" width="344" height="73" as="geometry" />
+        </mxCell>
+        <mxCell id="dBox" value="機能・処理" style="rounded=1;arcSize=2;html=1;fillColor=#F5F7FA;strokeColor=#CBD2D9;strokeWidth=1.5;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#3E4C59;" vertex="1" parent="1">
+          <mxGeometry x="20" y="730" width="1520" height="185" as="geometry" />
+        </mxCell>
+        <mxCell id="d1" value="&lt;b&gt;ガイド配信制御&lt;/b&gt;&lt;br&gt;&lt;br&gt;・許可ドメインの認証／除外パスの判定&lt;br&gt;・訪問者属性・URL による表示条件の判定&lt;br&gt;・配信データのキャッシュ制御" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="30" y="775" width="490" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="d2" value="&lt;b&gt;ガイド管理・公開&lt;/b&gt;&lt;br&gt;&lt;br&gt;管理画面・拡張機能で編集した内容を、配信用データへ反映" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="535" y="775" width="490" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="dLog" value="&lt;b&gt;ログ集計・レポート生成&lt;/b&gt;&lt;br&gt;&lt;br&gt;計測ビーコンのログを定期的に集計し、管理画面のレポートへ反映" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="775" width="490" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="eBox" value="データ" style="rounded=1;arcSize=2;html=1;fillColor=#EDF3F9;strokeColor=#B4C6D9;strokeWidth=1.5;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#33506E;" vertex="1" parent="1">
+          <mxGeometry x="20" y="945" width="1520" height="185" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" value="&lt;b&gt;ガイドデータ&lt;/b&gt;&lt;br&gt;&lt;br&gt;ツアー／ポップアップ／ヒント／フロートの定義、デザインテーマ、カスタム CSS・JS" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#7B96B8;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#33506E;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="48" y="990" width="355" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="&lt;b&gt;設定データベース&lt;/b&gt;&lt;br&gt;&lt;br&gt;アカウント・プロダクト・表示条件・許可ドメイン・除外パス" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#7B96B8;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#33506E;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="418" y="990" width="355" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="&lt;b&gt;配信キャッシュ&lt;/b&gt;&lt;br&gt;&lt;br&gt;ガイドデータ・設定情報を一時保持し、配信を高速化" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#7B96B8;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#33506E;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="788" y="990" width="355" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="&lt;b&gt;ログ／レポートデータ&lt;/b&gt;&lt;br&gt;&lt;br&gt;ガイドの表示・操作ログ、集計済みレポート" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#7B96B8;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#33506E;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1158" y="990" width="355" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="ed1" value="①" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=2.4;endArrow=blockThin;endFill=1;fontSize=13;fontStyle=1;fontColor=#7A3E04;labelBackgroundColor=#FFFFFF;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="a1" target="cCdn">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="125" y="442" /><mxPoint x="210" y="442" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed2" value="②" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=2.4;endArrow=blockThin;endFill=1;fontSize=13;fontStyle=1;fontColor=#7A3E04;labelBackgroundColor=#FFFFFF;exitX=0.6;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="a1" target="cInit">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="244" y="464" /><mxPoint x="580" y="464" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed3" value="③" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=2.4;endArrow=blockThin;endFill=1;fontSize=13;fontStyle=1;fontColor=#7A3E04;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.6;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="a5" target="cBeacon">
+          <mxGeometry x="0.7" relative="1" as="geometry">
+            <Array as="points"><mxPoint x="1148" y="225" /><mxPoint x="1148" y="500" /><mxPoint x="950" y="500" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=1.8;endArrow=blockThin;endFill=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.4;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cInit" target="d1">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=1.8;endArrow=blockThin;endFill=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.15;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cCdn" target="d1">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9AA5B1;strokeWidth=1.3;endArrow=blockThin;endFill=1;fontSize=10;fontColor=#52606D;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.4;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cBeacon" target="dLog">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed10" value="ガイドの作成・表示条件の設定" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9AA5B1;strokeWidth=1.3;endArrow=blockThin;endFill=1;fontSize=10;fontColor=#52606D;labelBackgroundColor=#FFFFFF;exitX=0.68;exitY=1;exitDx=0;exitDy=0;entryX=0.68;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="bBox" target="cpBox">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed11" value="配信データへ反映" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9AA5B1;strokeWidth=1.3;endArrow=blockThin;endFill=1;fontSize=10;fontColor=#52606D;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cpBox" target="d2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="1350" y="715" /><mxPoint x="780" y="715" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed12" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=1.8;endArrow=blockThin;endFill=1;exitX=0.35;exitY=1;exitDx=0;exitDy=0;entryX=0.35;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="d1" target="e1">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed13" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=1.8;endArrow=blockThin;endFill=1;exitX=0.9;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="d1" target="e2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="471" y="932" /><mxPoint x="507" y="932" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed14" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=1.8;endArrow=blockThin;endFill=1;exitX=0.55;exitY=1;exitDx=0;exitDy=0;entryX=0.2;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="d1" target="e3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="300" y="970" /><mxPoint x="859" y="970" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed15" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9AA5B1;strokeWidth=1.3;endArrow=blockThin;endFill=1;fontSize=10;fontColor=#52606D;labelBackgroundColor=#FFFFFF;exitX=0.2;exitY=1;exitDx=0;exitDy=0;entryX=0.8;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="d2" target="e1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="633" y="947" /><mxPoint x="332" y="947" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed16" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9AA5B1;strokeWidth=1.3;endArrow=blockThin;endFill=1;fontSize=10;fontColor=#52606D;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="dLog" target="e4">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="pattern-2. ガイド＋AI" name="2. ガイド＋AI">
+    <mxGraphModel dx="1600" dy="1200" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="Onboarding 機能構成図 ｜ ガイド＋AI" style="text;html=1;align=left;verticalAlign=middle;fontSize=22;fontStyle=1;fontColor=#1F2933;" vertex="1" parent="1">
+          <mxGeometry x="20" y="14" width="700" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="配信タグ方式（onboarding-init）　／　ガイド＝ツアー・ポップアップ・ヒント・フロート　／　2026-10-15 時点" style="text;html=1;align=left;verticalAlign=middle;fontSize=11.5;fontColor=#52606D;" vertex="1" parent="1">
+          <mxGeometry x="22" y="56" width="660" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="flowNote" value="&lt;b&gt;貴社サイトでの動作の流れ&lt;/b&gt;&lt;br&gt;① 配信タグが配信 CDN から初期化スクリプト・ガイド本体（JS / CSS）を読み込む&lt;br&gt;② 初期化 API へ、訪問者・ページに応じて表示するガイドを問い合わせ&lt;br&gt;③ ガイドの表示・操作ログを計測ビーコンへ送信&lt;br&gt;④ AI チャット・AI ヒントが AI 応答基盤と通信し、やり取りをログに記録" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=1.6;align=left;verticalAlign=top;spacingLeft=12;spacingTop=6;fontSize=10;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="740" y="10" width="460" height="104" as="geometry" />
+        </mxCell>
+        <mxCell id="legend" value="&lt;b&gt;凡例&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;矢印は主要なデータの流れを示します" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#CBD2D9;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=12;spacingTop=6;fontSize=10.5;fontColor=#52606D;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1220" y="10" width="320" height="104" as="geometry" />
+        </mxCell>
+        <mxCell id="legendSw1" value="" style="rounded=0;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1232" y="40" width="20" height="13" as="geometry" />
+        </mxCell>
+        <mxCell id="legendTx1" value="貴社サイトへの配信に関わる構成" style="text;html=1;align=left;verticalAlign=middle;fontSize=10.5;fontColor=#52606D;" vertex="1" parent="1">
+          <mxGeometry x="1258" y="39" width="270" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="legendSw2" value="" style="rounded=0;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;" vertex="1" parent="1">
+          <mxGeometry x="1232" y="58" width="20" height="13" as="geometry" />
+        </mxCell>
+        <mxCell id="legendTx2" value="弊社側の管理・運用" style="text;html=1;align=left;verticalAlign=middle;fontSize=10.5;fontColor=#52606D;" vertex="1" parent="1">
+          <mxGeometry x="1258" y="57" width="270" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="aBox" value="エンドユーザーのブラウザ（貴社 Web サイト）" style="rounded=1;arcSize=2;html=1;fillColor=#F5F7FA;strokeColor=#CBD2D9;strokeWidth=1.5;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#3E4C59;" vertex="1" parent="1">
+          <mxGeometry x="20" y="120" width="1120" height="305" as="geometry" />
+        </mxCell>
+        <mxCell id="a5" value="&lt;b&gt;画面に表示されるガイド UI&lt;/b&gt;&lt;br&gt;&lt;br&gt;ツアー／ポップアップ／ヒント／フロート／AI チャット&lt;br&gt;&lt;br&gt;貴社サイトの既存の画面構造は変更せず、上に重ねて表示します" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="165" width="1080" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="a1" value="&lt;b&gt;① 配信タグ&lt;/b&gt;&lt;br&gt;&lt;br&gt;貴社サイトに設置する script タグ 1 行&lt;br&gt;初期化スクリプト（onboarding-init.js）を読み込む" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="290" width="340" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="aNote" value="貴社サイトに設置いただくのは、この 1 行 のタグのみです。&lt;br&gt;既存ページの HTML・CSS・JavaScript の改修は必要ありません。" style="rounded=1;arcSize=6;html=1;dashed=1;dashPattern=6 4;fillColor=none;strokeColor=#B6BFC9;strokeWidth=1.2;align=left;verticalAlign=middle;spacingLeft=12;fontSize=10.5;fontColor=#52606D;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="400" y="290" width="720" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="bBox" value="運用（弊社・貴社ご担当者）" style="rounded=1;arcSize=2;html=1;fillColor=#F5F7FA;strokeColor=#CBD2D9;strokeWidth=1.5;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#3E4C59;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="120" width="380" height="305" as="geometry" />
+        </mxCell>
+        <mxCell id="b1" value="&lt;b&gt;管理画面&lt;/b&gt;&lt;br&gt;&lt;br&gt;ガイドの作成・表示条件の設定・レポート閲覧" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1178" y="170" width="344" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="b2" value="&lt;b&gt;エディタ拡張／プレビュー拡張&lt;/b&gt;&lt;br&gt;&lt;br&gt;実際の画面上でのガイド作成と、公開前の表示確認" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1178" y="295" width="344" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="cBox" value="Onboarding 配信基盤" style="rounded=1;arcSize=2;html=1;fillColor=#F5F7FA;strokeColor=#CBD2D9;strokeWidth=1.5;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#3E4C59;" vertex="1" parent="1">
+          <mxGeometry x="20" y="480" width="1120" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="cCdn" value="&lt;b&gt;配信アセット CDN&lt;/b&gt;&lt;br&gt;&lt;br&gt;初期化スクリプト&lt;br&gt;（onboarding-init.js）&lt;br&gt;ガイド本体の JS / CSS・テーマ&lt;br&gt;見た目を調整するカスタム CSS / JS" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="525" width="255" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="cInit" value="&lt;b&gt;初期化 API&lt;/b&gt;&lt;br&gt;&lt;br&gt;・許可ドメインの認証&lt;br&gt;・訪問者・ページによる表示判定&lt;br&gt;・ガイド定義の返却&lt;br&gt;　（ツアー／ポップアップ／&lt;br&gt;　　ヒント／フロート）" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="315" y="525" width="255" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="cAi" value="&lt;b&gt;AI 応答基盤&lt;/b&gt;&lt;br&gt;&lt;br&gt;AI チャット・AI ヒントの応答を&lt;br&gt;リアルタイムに返却&lt;br&gt;（WebSocket 接続）&lt;br&gt;やり取りの内容をログに記録" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="590" y="525" width="255" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="cBeacon" value="&lt;b&gt;計測ビーコン&lt;/b&gt;&lt;br&gt;&lt;br&gt;ガイドの表示・操作ログを受信" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="865" y="525" width="255" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="cpBox" value="管理・編集基盤" style="rounded=1;arcSize=2;html=1;fillColor=#F5F7FA;strokeColor=#CBD2D9;strokeWidth=1.5;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#3E4C59;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="480" width="380" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="cp1" value="&lt;b&gt;管理 API&lt;/b&gt;&lt;br&gt;&lt;br&gt;ガイド・表示条件・配信設定の管理" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1178" y="525" width="344" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="cp2" value="&lt;b&gt;編集／同期 API&lt;/b&gt;&lt;br&gt;&lt;br&gt;拡張機能からのガイド編集・同期" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1178" y="607" width="344" height="73" as="geometry" />
+        </mxCell>
+        <mxCell id="dBox" value="機能・処理" style="rounded=1;arcSize=2;html=1;fillColor=#F5F7FA;strokeColor=#CBD2D9;strokeWidth=1.5;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#3E4C59;" vertex="1" parent="1">
+          <mxGeometry x="20" y="730" width="1520" height="185" as="geometry" />
+        </mxCell>
+        <mxCell id="d1" value="&lt;b&gt;ガイド配信制御&lt;/b&gt;&lt;br&gt;&lt;br&gt;・許可ドメインの認証／除外パスの判定&lt;br&gt;・訪問者属性・URL による表示条件の判定&lt;br&gt;・配信データのキャッシュ制御" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="48" y="775" width="355" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="d2" value="&lt;b&gt;ガイド管理・公開&lt;/b&gt;&lt;br&gt;&lt;br&gt;管理画面・拡張機能で編集した内容を、配信用データへ反映" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="418" y="775" width="355" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="dAi" value="&lt;b&gt;AI 応答生成&lt;/b&gt;&lt;br&gt;&lt;br&gt;外部 AI サービスと連携し、問い合わせに対する回答を生成" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="788" y="775" width="355" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="dLog" value="&lt;b&gt;ログ集計・レポート生成&lt;/b&gt;&lt;br&gt;&lt;br&gt;計測ビーコンのログと、AI チャット・AI ヒントの利用ログを&lt;br&gt;定期的に集計し、管理画面のレポートへ反映" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1158" y="775" width="355" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="eBox" value="データ" style="rounded=1;arcSize=2;html=1;fillColor=#EDF3F9;strokeColor=#B4C6D9;strokeWidth=1.5;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#33506E;" vertex="1" parent="1">
+          <mxGeometry x="20" y="945" width="1520" height="185" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" value="&lt;b&gt;ガイドデータ&lt;/b&gt;&lt;br&gt;&lt;br&gt;ツアー／ポップアップ／ヒント／フロートの定義、デザインテーマ、カスタム CSS・JS" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#7B96B8;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#33506E;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="48" y="990" width="355" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="&lt;b&gt;設定データベース&lt;/b&gt;&lt;br&gt;&lt;br&gt;アカウント・プロダクト・表示条件・許可ドメイン・除外パス・AI チャットの設定" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#7B96B8;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#33506E;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="418" y="990" width="355" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="&lt;b&gt;配信キャッシュ&lt;/b&gt;&lt;br&gt;&lt;br&gt;ガイドデータ・設定情報を一時保持し、配信を高速化" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#7B96B8;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#33506E;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="788" y="990" width="355" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="&lt;b&gt;ログ／レポートデータ&lt;/b&gt;&lt;br&gt;&lt;br&gt;ガイドの表示・操作ログ、AI チャット・AI ヒントの利用ログ、集計済みレポート" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#7B96B8;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#33506E;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1158" y="990" width="355" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="ed1" value="①" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=2.4;endArrow=blockThin;endFill=1;fontSize=13;fontStyle=1;fontColor=#7A3E04;labelBackgroundColor=#FFFFFF;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="a1" target="cCdn">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="125" y="442" /><mxPoint x="167" y="442" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed2" value="②" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=2.4;endArrow=blockThin;endFill=1;fontSize=13;fontStyle=1;fontColor=#7A3E04;labelBackgroundColor=#FFFFFF;exitX=0.6;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="a1" target="cInit">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="244" y="464" /><mxPoint x="442" y="464" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed3" value="③" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=2.4;endArrow=blockThin;endFill=1;fontSize=13;fontStyle=1;fontColor=#7A3E04;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.6;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="a5" target="cBeacon">
+          <mxGeometry x="0.7" relative="1" as="geometry">
+            <Array as="points"><mxPoint x="1148" y="225" /><mxPoint x="1148" y="500" /><mxPoint x="992" y="500" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed5" value="④" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=2.4;endArrow=blockThin;endFill=1;fontSize=13;fontStyle=1;fontColor=#7A3E04;labelBackgroundColor=#FFFFFF;exitX=0.324;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="a5" target="cAi">
+          <mxGeometry x="0.6" relative="1" as="geometry">
+            <Array as="points"><mxPoint x="390" y="486" /><mxPoint x="717" y="486" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=1.8;endArrow=blockThin;endFill=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.4;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cInit" target="d1">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=1.8;endArrow=blockThin;endFill=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.15;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cCdn" target="d1">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9AA5B1;strokeWidth=1.3;endArrow=blockThin;endFill=1;fontSize=10;fontColor=#52606D;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.4;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cBeacon" target="dLog">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9AA5B1;strokeWidth=1.3;endArrow=blockThin;endFill=1;fontSize=10;fontColor=#52606D;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cAi" target="dAi">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed17" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9AA5B1;strokeWidth=1.3;endArrow=blockThin;endFill=1;fontSize=10;fontColor=#52606D;labelBackgroundColor=#FFFFFF;exitX=0.85;exitY=1;exitDx=0;exitDy=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cAi" target="dLog">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed10" value="ガイドの作成・表示条件の設定" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9AA5B1;strokeWidth=1.3;endArrow=blockThin;endFill=1;fontSize=10;fontColor=#52606D;labelBackgroundColor=#FFFFFF;exitX=0.68;exitY=1;exitDx=0;exitDy=0;entryX=0.68;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="bBox" target="cpBox">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed11" value="配信データへ反映" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9AA5B1;strokeWidth=1.3;endArrow=blockThin;endFill=1;fontSize=10;fontColor=#52606D;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cpBox" target="d2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="1350" y="715" /><mxPoint x="595" y="715" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed12" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=1.8;endArrow=blockThin;endFill=1;exitX=0.35;exitY=1;exitDx=0;exitDy=0;entryX=0.35;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="d1" target="e1">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed13" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=1.8;endArrow=blockThin;endFill=1;exitX=0.9;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="d1" target="e2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="368" y="932" /><mxPoint x="507" y="932" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed14" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=1.8;endArrow=blockThin;endFill=1;exitX=0.55;exitY=1;exitDx=0;exitDy=0;entryX=0.2;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="d1" target="e3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="243" y="970" /><mxPoint x="859" y="970" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed15" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9AA5B1;strokeWidth=1.3;endArrow=blockThin;endFill=1;fontSize=10;fontColor=#52606D;labelBackgroundColor=#FFFFFF;exitX=0.2;exitY=1;exitDx=0;exitDy=0;entryX=0.8;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="d2" target="e1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="489" y="947" /><mxPoint x="332" y="947" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed16" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9AA5B1;strokeWidth=1.3;endArrow=blockThin;endFill=1;fontSize=10;fontColor=#52606D;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="dLog" target="e4">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="pattern-3. ガイド＋カスタムレイヤー" name="3. ガイド＋カスタムレイヤー">
+    <mxGraphModel dx="1600" dy="1200" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="Onboarding 機能構成図 ｜ ガイド＋カスタムレイヤー" style="text;html=1;align=left;verticalAlign=middle;fontSize=22;fontStyle=1;fontColor=#1F2933;" vertex="1" parent="1">
+          <mxGeometry x="20" y="14" width="700" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="配信タグ方式（onboarding-init）　／　ガイド＝ツアー・ポップアップ・ヒント・フロート　／　2026-10-15 時点" style="text;html=1;align=left;verticalAlign=middle;fontSize=11.5;fontColor=#52606D;" vertex="1" parent="1">
+          <mxGeometry x="22" y="56" width="660" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="flowNote" value="&lt;b&gt;貴社サイトでの動作の流れ&lt;/b&gt;&lt;br&gt;① 配信タグが配信 CDN から初期化スクリプト・ガイド本体（JS / CSS）を読み込む&lt;br&gt;② 初期化 API へ、訪問者・ページに応じて表示するガイドを問い合わせ&lt;br&gt;③ ガイドの表示・操作ログを計測ビーコンへ送信&lt;br&gt;④ カスタムレイヤー タグが専用 JS を読み込み、独自 UI を表示" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=1.6;align=left;verticalAlign=top;spacingLeft=12;spacingTop=6;fontSize=10;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="740" y="10" width="460" height="104" as="geometry" />
+        </mxCell>
+        <mxCell id="legend" value="&lt;b&gt;凡例&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;矢印は主要なデータの流れを示します" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#CBD2D9;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=12;spacingTop=6;fontSize=10.5;fontColor=#52606D;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1220" y="10" width="320" height="104" as="geometry" />
+        </mxCell>
+        <mxCell id="legendSw1" value="" style="rounded=0;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1232" y="40" width="20" height="13" as="geometry" />
+        </mxCell>
+        <mxCell id="legendTx1" value="貴社サイトへの配信に関わる構成" style="text;html=1;align=left;verticalAlign=middle;fontSize=10.5;fontColor=#52606D;" vertex="1" parent="1">
+          <mxGeometry x="1258" y="39" width="270" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="legendSw2" value="" style="rounded=0;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;" vertex="1" parent="1">
+          <mxGeometry x="1232" y="58" width="20" height="13" as="geometry" />
+        </mxCell>
+        <mxCell id="legendTx2" value="弊社側の管理・運用" style="text;html=1;align=left;verticalAlign=middle;fontSize=10.5;fontColor=#52606D;" vertex="1" parent="1">
+          <mxGeometry x="1258" y="57" width="270" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="aBox" value="エンドユーザーのブラウザ（貴社 Web サイト）" style="rounded=1;arcSize=2;html=1;fillColor=#F5F7FA;strokeColor=#CBD2D9;strokeWidth=1.5;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#3E4C59;" vertex="1" parent="1">
+          <mxGeometry x="20" y="120" width="1120" height="305" as="geometry" />
+        </mxCell>
+        <mxCell id="a5" value="&lt;b&gt;画面に表示されるガイド UI&lt;/b&gt;&lt;br&gt;&lt;br&gt;ツアー／ポップアップ／ヒント／フロート／カスタムレイヤーの独自 UI&lt;br&gt;&lt;br&gt;貴社サイトの既存の画面構造は変更せず、上に重ねて表示します" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="165" width="1080" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="a1" value="&lt;b&gt;① 配信タグ&lt;/b&gt;&lt;br&gt;&lt;br&gt;貴社サイトに設置する script タグ 1 行&lt;br&gt;初期化スクリプト（onboarding-init.js）を読み込む" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="290" width="340" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="a3" value="&lt;b&gt;④ カスタムレイヤー タグ&lt;/b&gt;&lt;br&gt;&lt;br&gt;貴社向けに個別開発した JS を読み込む script タグ&lt;br&gt;専用 ID ごとに配信" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="400" y="290" width="340" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="aNote" value="貴社サイトに設置いただくのは、この 2 行 のタグのみです。&lt;br&gt;既存ページの HTML・CSS・JavaScript の改修は必要ありません。" style="rounded=1;arcSize=6;html=1;dashed=1;dashPattern=6 4;fillColor=none;strokeColor=#B6BFC9;strokeWidth=1.2;align=left;verticalAlign=middle;spacingLeft=12;fontSize=10.5;fontColor=#52606D;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="760" y="290" width="360" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="bBox" value="運用（弊社・貴社ご担当者）" style="rounded=1;arcSize=2;html=1;fillColor=#F5F7FA;strokeColor=#CBD2D9;strokeWidth=1.5;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#3E4C59;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="120" width="380" height="305" as="geometry" />
+        </mxCell>
+        <mxCell id="b1" value="&lt;b&gt;管理画面&lt;/b&gt;&lt;br&gt;&lt;br&gt;ガイドの作成・表示条件の設定・レポート閲覧" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1178" y="170" width="344" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="b2" value="&lt;b&gt;エディタ拡張／プレビュー拡張&lt;/b&gt;&lt;br&gt;&lt;br&gt;実際の画面上でのガイド作成と、公開前の表示確認" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1178" y="295" width="344" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="cBox" value="Onboarding 配信基盤" style="rounded=1;arcSize=2;html=1;fillColor=#F5F7FA;strokeColor=#CBD2D9;strokeWidth=1.5;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#3E4C59;" vertex="1" parent="1">
+          <mxGeometry x="20" y="480" width="1120" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="cCdn" value="&lt;b&gt;配信アセット CDN&lt;/b&gt;&lt;br&gt;&lt;br&gt;初期化スクリプト&lt;br&gt;（onboarding-init.js）&lt;br&gt;ガイド本体の JS / CSS・テーマ&lt;br&gt;見た目を調整するカスタム CSS / JS" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="525" width="255" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="cInit" value="&lt;b&gt;初期化 API&lt;/b&gt;&lt;br&gt;&lt;br&gt;・許可ドメインの認証&lt;br&gt;・訪問者・ページによる表示判定&lt;br&gt;・ガイド定義の返却&lt;br&gt;　（ツアー／ポップアップ／&lt;br&gt;　　ヒント／フロート）" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="315" y="525" width="255" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="cCl" value="&lt;b&gt;カスタムレイヤー CDN&lt;/b&gt;&lt;br&gt;&lt;br&gt;貴社専用 JS の配信&lt;br&gt;既存サイトと影響し合わないよう分離して動作" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="590" y="525" width="255" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="cBeacon" value="&lt;b&gt;計測ビーコン&lt;/b&gt;&lt;br&gt;&lt;br&gt;ガイドの表示・操作ログを受信" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="865" y="525" width="255" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="cpBox" value="管理・編集基盤" style="rounded=1;arcSize=2;html=1;fillColor=#F5F7FA;strokeColor=#CBD2D9;strokeWidth=1.5;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#3E4C59;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="480" width="380" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="cp1" value="&lt;b&gt;管理 API&lt;/b&gt;&lt;br&gt;&lt;br&gt;ガイド・表示条件・配信設定の管理" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1178" y="525" width="344" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="cp2" value="&lt;b&gt;編集／同期 API&lt;/b&gt;&lt;br&gt;&lt;br&gt;拡張機能からのガイド編集・同期" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1178" y="607" width="344" height="73" as="geometry" />
+        </mxCell>
+        <mxCell id="dBox" value="機能・処理" style="rounded=1;arcSize=2;html=1;fillColor=#F5F7FA;strokeColor=#CBD2D9;strokeWidth=1.5;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#3E4C59;" vertex="1" parent="1">
+          <mxGeometry x="20" y="730" width="1520" height="185" as="geometry" />
+        </mxCell>
+        <mxCell id="d1" value="&lt;b&gt;ガイド配信制御&lt;/b&gt;&lt;br&gt;&lt;br&gt;・許可ドメインの認証／除外パスの判定&lt;br&gt;・訪問者属性・URL による表示条件の判定&lt;br&gt;・配信データのキャッシュ制御" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="30" y="775" width="490" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="d2" value="&lt;b&gt;ガイド管理・公開&lt;/b&gt;&lt;br&gt;&lt;br&gt;管理画面・拡張機能で編集した内容を、配信用データへ反映" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="535" y="775" width="490" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="dLog" value="&lt;b&gt;ログ集計・レポート生成&lt;/b&gt;&lt;br&gt;&lt;br&gt;計測ビーコンのログを定期的に集計し、管理画面のレポートへ反映" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="775" width="490" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="eBox" value="データ" style="rounded=1;arcSize=2;html=1;fillColor=#EDF3F9;strokeColor=#B4C6D9;strokeWidth=1.5;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#33506E;" vertex="1" parent="1">
+          <mxGeometry x="20" y="945" width="1520" height="185" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" value="&lt;b&gt;ガイドデータ&lt;/b&gt;&lt;br&gt;&lt;br&gt;ツアー／ポップアップ／ヒント／フロートの定義、デザインテーマ、カスタム CSS・JS" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#7B96B8;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#33506E;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="48" y="990" width="355" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="&lt;b&gt;設定データベース&lt;/b&gt;&lt;br&gt;&lt;br&gt;アカウント・プロダクト・表示条件・許可ドメイン・除外パス" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#7B96B8;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#33506E;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="418" y="990" width="355" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="&lt;b&gt;配信キャッシュ&lt;/b&gt;&lt;br&gt;&lt;br&gt;ガイドデータ・設定情報を一時保持し、配信を高速化" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#7B96B8;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#33506E;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="788" y="990" width="355" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="&lt;b&gt;ログ／レポートデータ&lt;/b&gt;&lt;br&gt;&lt;br&gt;ガイドの表示・操作ログ、集計済みレポート" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#7B96B8;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#33506E;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1158" y="990" width="355" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="ed1" value="①" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=2.4;endArrow=blockThin;endFill=1;fontSize=13;fontStyle=1;fontColor=#7A3E04;labelBackgroundColor=#FFFFFF;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="a1" target="cCdn">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="125" y="442" /><mxPoint x="167" y="442" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed2" value="②" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=2.4;endArrow=blockThin;endFill=1;fontSize=13;fontStyle=1;fontColor=#7A3E04;labelBackgroundColor=#FFFFFF;exitX=0.6;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="a1" target="cInit">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="244" y="464" /><mxPoint x="442" y="464" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed3" value="③" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=2.4;endArrow=blockThin;endFill=1;fontSize=13;fontStyle=1;fontColor=#7A3E04;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.6;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="a5" target="cBeacon">
+          <mxGeometry x="0.7" relative="1" as="geometry">
+            <Array as="points"><mxPoint x="1148" y="225" /><mxPoint x="1148" y="500" /><mxPoint x="992" y="500" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed4" value="④" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=2.4;endArrow=blockThin;endFill=1;fontSize=13;fontStyle=1;fontColor=#7A3E04;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="a3" target="cCl">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="570" y="442" /><mxPoint x="717" y="442" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=1.8;endArrow=blockThin;endFill=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.4;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cInit" target="d1">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=1.8;endArrow=blockThin;endFill=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.15;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cCdn" target="d1">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9AA5B1;strokeWidth=1.3;endArrow=blockThin;endFill=1;fontSize=10;fontColor=#52606D;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.4;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cBeacon" target="dLog">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed10" value="ガイドの作成・表示条件の設定" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9AA5B1;strokeWidth=1.3;endArrow=blockThin;endFill=1;fontSize=10;fontColor=#52606D;labelBackgroundColor=#FFFFFF;exitX=0.68;exitY=1;exitDx=0;exitDy=0;entryX=0.68;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="bBox" target="cpBox">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed11" value="配信データへ反映" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9AA5B1;strokeWidth=1.3;endArrow=blockThin;endFill=1;fontSize=10;fontColor=#52606D;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cpBox" target="d2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="1350" y="715" /><mxPoint x="780" y="715" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed12" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=1.8;endArrow=blockThin;endFill=1;exitX=0.35;exitY=1;exitDx=0;exitDy=0;entryX=0.35;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="d1" target="e1">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed13" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=1.8;endArrow=blockThin;endFill=1;exitX=0.9;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="d1" target="e2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="471" y="932" /><mxPoint x="507" y="932" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed14" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=1.8;endArrow=blockThin;endFill=1;exitX=0.55;exitY=1;exitDx=0;exitDy=0;entryX=0.2;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="d1" target="e3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="300" y="970" /><mxPoint x="859" y="970" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed15" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9AA5B1;strokeWidth=1.3;endArrow=blockThin;endFill=1;fontSize=10;fontColor=#52606D;labelBackgroundColor=#FFFFFF;exitX=0.2;exitY=1;exitDx=0;exitDy=0;entryX=0.8;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="d2" target="e1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="633" y="947" /><mxPoint x="332" y="947" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed16" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9AA5B1;strokeWidth=1.3;endArrow=blockThin;endFill=1;fontSize=10;fontColor=#52606D;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="dLog" target="e4">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="pattern-4. ガイド＋カスタムレイヤー＋AI" name="4. ガイド＋カスタムレイヤー＋AI">
+    <mxGraphModel dx="1600" dy="1200" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="Onboarding 機能構成図 ｜ ガイド＋カスタムレイヤー＋AI" style="text;html=1;align=left;verticalAlign=middle;fontSize=22;fontStyle=1;fontColor=#1F2933;" vertex="1" parent="1">
+          <mxGeometry x="20" y="14" width="700" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="配信タグ方式（onboarding-init）　／　ガイド＝ツアー・ポップアップ・ヒント・フロート　／　2026-10-15 時点" style="text;html=1;align=left;verticalAlign=middle;fontSize=11.5;fontColor=#52606D;" vertex="1" parent="1">
+          <mxGeometry x="22" y="56" width="660" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="flowNote" value="&lt;b&gt;貴社サイトでの動作の流れ&lt;/b&gt;&lt;br&gt;① 配信タグが配信 CDN から初期化スクリプト・ガイド本体（JS / CSS）を読み込む&lt;br&gt;② 初期化 API へ、訪問者・ページに応じて表示するガイドを問い合わせ&lt;br&gt;③ ガイドの表示・操作ログを計測ビーコンへ送信&lt;br&gt;④ カスタムレイヤー タグが専用 JS を読み込み、独自 UI を表示&lt;br&gt;⑤ AI チャット・AI ヒントが AI 応答基盤と通信し、やり取りをログに記録" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=1.6;align=left;verticalAlign=top;spacingLeft=12;spacingTop=6;fontSize=10;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="740" y="10" width="460" height="104" as="geometry" />
+        </mxCell>
+        <mxCell id="legend" value="&lt;b&gt;凡例&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;矢印は主要なデータの流れを示します" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#CBD2D9;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=12;spacingTop=6;fontSize=10.5;fontColor=#52606D;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1220" y="10" width="320" height="104" as="geometry" />
+        </mxCell>
+        <mxCell id="legendSw1" value="" style="rounded=0;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1232" y="40" width="20" height="13" as="geometry" />
+        </mxCell>
+        <mxCell id="legendTx1" value="貴社サイトへの配信に関わる構成" style="text;html=1;align=left;verticalAlign=middle;fontSize=10.5;fontColor=#52606D;" vertex="1" parent="1">
+          <mxGeometry x="1258" y="39" width="270" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="legendSw2" value="" style="rounded=0;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;" vertex="1" parent="1">
+          <mxGeometry x="1232" y="58" width="20" height="13" as="geometry" />
+        </mxCell>
+        <mxCell id="legendTx2" value="弊社側の管理・運用" style="text;html=1;align=left;verticalAlign=middle;fontSize=10.5;fontColor=#52606D;" vertex="1" parent="1">
+          <mxGeometry x="1258" y="57" width="270" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="aBox" value="エンドユーザーのブラウザ（貴社 Web サイト）" style="rounded=1;arcSize=2;html=1;fillColor=#F5F7FA;strokeColor=#CBD2D9;strokeWidth=1.5;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#3E4C59;" vertex="1" parent="1">
+          <mxGeometry x="20" y="120" width="1120" height="305" as="geometry" />
+        </mxCell>
+        <mxCell id="a5" value="&lt;b&gt;画面に表示されるガイド UI&lt;/b&gt;&lt;br&gt;&lt;br&gt;ツアー／ポップアップ／ヒント／フロート／AI チャット／カスタムレイヤーの独自 UI&lt;br&gt;&lt;br&gt;貴社サイトの既存の画面構造は変更せず、上に重ねて表示します" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="165" width="1080" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="a1" value="&lt;b&gt;① 配信タグ&lt;/b&gt;&lt;br&gt;&lt;br&gt;貴社サイトに設置する script タグ 1 行&lt;br&gt;初期化スクリプト（onboarding-init.js）を読み込む" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="290" width="340" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="a3" value="&lt;b&gt;④ カスタムレイヤー タグ&lt;/b&gt;&lt;br&gt;&lt;br&gt;貴社向けに個別開発した JS を読み込む script タグ&lt;br&gt;専用 ID ごとに配信" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="400" y="290" width="340" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="aNote" value="貴社サイトに設置いただくのは、この 2 行 のタグのみです。&lt;br&gt;既存ページの HTML・CSS・JavaScript の改修は必要ありません。" style="rounded=1;arcSize=6;html=1;dashed=1;dashPattern=6 4;fillColor=none;strokeColor=#B6BFC9;strokeWidth=1.2;align=left;verticalAlign=middle;spacingLeft=12;fontSize=10.5;fontColor=#52606D;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="760" y="290" width="360" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="bBox" value="運用（弊社・貴社ご担当者）" style="rounded=1;arcSize=2;html=1;fillColor=#F5F7FA;strokeColor=#CBD2D9;strokeWidth=1.5;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#3E4C59;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="120" width="380" height="305" as="geometry" />
+        </mxCell>
+        <mxCell id="b1" value="&lt;b&gt;管理画面&lt;/b&gt;&lt;br&gt;&lt;br&gt;ガイドの作成・表示条件の設定・レポート閲覧" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1178" y="170" width="344" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="b2" value="&lt;b&gt;エディタ拡張／プレビュー拡張&lt;/b&gt;&lt;br&gt;&lt;br&gt;実際の画面上でのガイド作成と、公開前の表示確認" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1178" y="295" width="344" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="cBox" value="Onboarding 配信基盤" style="rounded=1;arcSize=2;html=1;fillColor=#F5F7FA;strokeColor=#CBD2D9;strokeWidth=1.5;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#3E4C59;" vertex="1" parent="1">
+          <mxGeometry x="20" y="480" width="1120" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="cCdn" value="&lt;b&gt;配信アセット CDN&lt;/b&gt;&lt;br&gt;&lt;br&gt;初期化スクリプト&lt;br&gt;（onboarding-init.js）&lt;br&gt;ガイド本体の JS / CSS・テーマ&lt;br&gt;見た目を調整するカスタム CSS / JS" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="525" width="200" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="cInit" value="&lt;b&gt;初期化 API&lt;/b&gt;&lt;br&gt;&lt;br&gt;・許可ドメインの認証&lt;br&gt;・訪問者・ページによる表示判定&lt;br&gt;・ガイド定義の返却&lt;br&gt;　（ツアー／ポップアップ／&lt;br&gt;　　ヒント／フロート）" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="260" y="525" width="200" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="cCl" value="&lt;b&gt;カスタムレイヤー CDN&lt;/b&gt;&lt;br&gt;&lt;br&gt;貴社専用 JS の配信&lt;br&gt;既存サイトと影響し合わないよう分離して動作" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="480" y="525" width="200" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="cAi" value="&lt;b&gt;AI 応答基盤&lt;/b&gt;&lt;br&gt;&lt;br&gt;AI チャット・AI ヒントの応答を&lt;br&gt;リアルタイムに返却&lt;br&gt;（WebSocket 接続）&lt;br&gt;やり取りの内容をログに記録" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="700" y="525" width="200" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="cBeacon" value="&lt;b&gt;計測ビーコン&lt;/b&gt;&lt;br&gt;&lt;br&gt;ガイドの表示・操作ログを受信" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="920" y="525" width="200" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="cpBox" value="管理・編集基盤" style="rounded=1;arcSize=2;html=1;fillColor=#F5F7FA;strokeColor=#CBD2D9;strokeWidth=1.5;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#3E4C59;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="480" width="380" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="cp1" value="&lt;b&gt;管理 API&lt;/b&gt;&lt;br&gt;&lt;br&gt;ガイド・表示条件・配信設定の管理" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1178" y="525" width="344" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="cp2" value="&lt;b&gt;編集／同期 API&lt;/b&gt;&lt;br&gt;&lt;br&gt;拡張機能からのガイド編集・同期" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1178" y="607" width="344" height="73" as="geometry" />
+        </mxCell>
+        <mxCell id="dBox" value="機能・処理" style="rounded=1;arcSize=2;html=1;fillColor=#F5F7FA;strokeColor=#CBD2D9;strokeWidth=1.5;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#3E4C59;" vertex="1" parent="1">
+          <mxGeometry x="20" y="730" width="1520" height="185" as="geometry" />
+        </mxCell>
+        <mxCell id="d1" value="&lt;b&gt;ガイド配信制御&lt;/b&gt;&lt;br&gt;&lt;br&gt;・許可ドメインの認証／除外パスの判定&lt;br&gt;・訪問者属性・URL による表示条件の判定&lt;br&gt;・配信データのキャッシュ制御" style="rounded=1;arcSize=6;html=1;fillColor=#FFF4E8;strokeColor=#DD7B22;strokeWidth=2.2;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#7A3E04;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="48" y="775" width="355" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="d2" value="&lt;b&gt;ガイド管理・公開&lt;/b&gt;&lt;br&gt;&lt;br&gt;管理画面・拡張機能で編集した内容を、配信用データへ反映" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="418" y="775" width="355" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="dAi" value="&lt;b&gt;AI 応答生成&lt;/b&gt;&lt;br&gt;&lt;br&gt;外部 AI サービスと連携し、問い合わせに対する回答を生成" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="788" y="775" width="355" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="dLog" value="&lt;b&gt;ログ集計・レポート生成&lt;/b&gt;&lt;br&gt;&lt;br&gt;計測ビーコンのログと、AI チャット・AI ヒントの利用ログを&lt;br&gt;定期的に集計し、管理画面のレポートへ反映" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#9AA5B1;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#3E4C59;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1158" y="775" width="355" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="eBox" value="データ" style="rounded=1;arcSize=2;html=1;fillColor=#EDF3F9;strokeColor=#B4C6D9;strokeWidth=1.5;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#33506E;" vertex="1" parent="1">
+          <mxGeometry x="20" y="945" width="1520" height="185" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" value="&lt;b&gt;ガイドデータ&lt;/b&gt;&lt;br&gt;&lt;br&gt;ツアー／ポップアップ／ヒント／フロートの定義、デザインテーマ、カスタム CSS・JS" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#7B96B8;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#33506E;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="48" y="990" width="355" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="&lt;b&gt;設定データベース&lt;/b&gt;&lt;br&gt;&lt;br&gt;アカウント・プロダクト・表示条件・許可ドメイン・除外パス・AI チャットの設定" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#7B96B8;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#33506E;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="418" y="990" width="355" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="&lt;b&gt;配信キャッシュ&lt;/b&gt;&lt;br&gt;&lt;br&gt;ガイドデータ・設定情報を一時保持し、配信を高速化" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#7B96B8;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#33506E;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="788" y="990" width="355" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="&lt;b&gt;ログ／レポートデータ&lt;/b&gt;&lt;br&gt;&lt;br&gt;ガイドの表示・操作ログ、AI チャット・AI ヒントの利用ログ、集計済みレポート" style="rounded=1;arcSize=6;html=1;fillColor=#FFFFFF;strokeColor=#7B96B8;strokeWidth=1.3;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=10.5;fontColor=#33506E;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1158" y="990" width="355" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="ed1" value="①" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=2.4;endArrow=blockThin;endFill=1;fontSize=13;fontStyle=1;fontColor=#7A3E04;labelBackgroundColor=#FFFFFF;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="a1" target="cCdn">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="125" y="442" /><mxPoint x="140" y="442" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed2" value="②" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=2.4;endArrow=blockThin;endFill=1;fontSize=13;fontStyle=1;fontColor=#7A3E04;labelBackgroundColor=#FFFFFF;exitX=0.6;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="a1" target="cInit">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="244" y="464" /><mxPoint x="360" y="464" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed3" value="③" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=2.4;endArrow=blockThin;endFill=1;fontSize=13;fontStyle=1;fontColor=#7A3E04;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.6;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="a5" target="cBeacon">
+          <mxGeometry x="0.7" relative="1" as="geometry">
+            <Array as="points"><mxPoint x="1148" y="225" /><mxPoint x="1148" y="500" /><mxPoint x="1020" y="500" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed4" value="④" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=2.4;endArrow=blockThin;endFill=1;fontSize=13;fontStyle=1;fontColor=#7A3E04;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="a3" target="cCl">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="570" y="442" /><mxPoint x="580" y="442" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed5" value="⑤" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=2.4;endArrow=blockThin;endFill=1;fontSize=13;fontStyle=1;fontColor=#7A3E04;labelBackgroundColor=#FFFFFF;exitX=0.324;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="a5" target="cAi">
+          <mxGeometry x="0.6" relative="1" as="geometry">
+            <Array as="points"><mxPoint x="390" y="486" /><mxPoint x="800" y="486" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=1.8;endArrow=blockThin;endFill=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.4;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cInit" target="d1">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=1.8;endArrow=blockThin;endFill=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.15;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cCdn" target="d1">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9AA5B1;strokeWidth=1.3;endArrow=blockThin;endFill=1;fontSize=10;fontColor=#52606D;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.4;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cBeacon" target="dLog">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9AA5B1;strokeWidth=1.3;endArrow=blockThin;endFill=1;fontSize=10;fontColor=#52606D;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cAi" target="dAi">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed17" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9AA5B1;strokeWidth=1.3;endArrow=blockThin;endFill=1;fontSize=10;fontColor=#52606D;labelBackgroundColor=#FFFFFF;exitX=0.85;exitY=1;exitDx=0;exitDy=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cAi" target="dLog">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed10" value="ガイドの作成・表示条件の設定" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9AA5B1;strokeWidth=1.3;endArrow=blockThin;endFill=1;fontSize=10;fontColor=#52606D;labelBackgroundColor=#FFFFFF;exitX=0.68;exitY=1;exitDx=0;exitDy=0;entryX=0.68;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="bBox" target="cpBox">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed11" value="配信データへ反映" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9AA5B1;strokeWidth=1.3;endArrow=blockThin;endFill=1;fontSize=10;fontColor=#52606D;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cpBox" target="d2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="1350" y="715" /><mxPoint x="595" y="715" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed12" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=1.8;endArrow=blockThin;endFill=1;exitX=0.35;exitY=1;exitDx=0;exitDy=0;entryX=0.35;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="d1" target="e1">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed13" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=1.8;endArrow=blockThin;endFill=1;exitX=0.9;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="d1" target="e2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="368" y="932" /><mxPoint x="507" y="932" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed14" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DD7B22;strokeWidth=1.8;endArrow=blockThin;endFill=1;exitX=0.55;exitY=1;exitDx=0;exitDy=0;entryX=0.2;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="d1" target="e3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="243" y="970" /><mxPoint x="859" y="970" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed15" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9AA5B1;strokeWidth=1.3;endArrow=blockThin;endFill=1;fontSize=10;fontColor=#52606D;labelBackgroundColor=#FFFFFF;exitX=0.2;exitY=1;exitDx=0;exitDy=0;entryX=0.8;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="d2" target="e1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="489" y="947" /><mxPoint x="332" y="947" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ed16" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9AA5B1;strokeWidth=1.3;endArrow=blockThin;endFill=1;fontSize=10;fontColor=#52606D;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="dLog" target="e4">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

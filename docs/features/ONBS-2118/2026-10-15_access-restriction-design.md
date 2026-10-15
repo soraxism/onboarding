@@ -141,18 +141,24 @@ BASIC 認証と併記する際は `<RequireAll>` が必須。Apache 2.4 の既�
 ### F2. ALB のリスナールール（source-ip 条件）
 
 ```
-pri 1: host-header ∈ {5ホスト} AND path-pattern=/tools/* AND source-ip=153.125.137.243/32 → forward
-pri 2: host-header ∈ {5ホスト} AND path-pattern=/tools/*                                   → fixed-response 403
-pri 3: (既存 pri1) onboarding.co.jp / www → forward onboarding-lp-prd
-pri 4: (既存 pri2) 5ホスト               → forward Onboarding-dev
+pri 1  [既存・不変]  onboarding.co.jp / www        → forward onboarding-lp-prd
+pri 2  [新規]        5ホスト + /tools/* + VPN IP   → forward Onboarding-dev
+pri 3  [新規]        5ホスト + /tools/*            → fixed-response 403
+pri 4  [既存を移動]  5ホスト                        → forward Onboarding-dev
 ```
+
+**コーポレート（pri 1）は動かさない。** `/tools/*` の制限ルールは既存 pri 2 より前にあれば足り、
+pri 1 より前である必要がない（ホストが重複しないため）。移動するのは既存 pri 2 の 1 本だけで、
+その間も pri 4 が従来どおり処理するためダウンタイムは生じない。
+
+`path-pattern` は `/tools/*` のみを対象とするため、`/demo/` `/iguider/` は pri 4 で従来どおり通る。
 
 | 観点 | 評価 |
 | --- | --- |
 | カバレッジ | ALB を通るトラフィックのみ。**EC2 パブリック IP の直叩きは塞げない**（SG での対処が別途必要） |
 | 将来の漏れ | **有り得る。** ホストを列挙するため、vhost / ALB ルールが増えたときに追従が要る |
 | 迂回可能性 | `source-ip` は TCP 接続元を見るため偽装不可 |
-| 作業リスク | 中。既存ルールの優先度組み替えが必要。`set-rule-priorities` で原子的に変更すれば一時的な誤ルーティングは避けられる |
+| 作業リスク | 低〜中。移動するのは既存 pri 2 の 1 本のみで、コーポレートの pri 1 には触れない。移動中も pri 4 が処理するためダウンタイムは無い |
 | ロールバック | AWS CLI / コンソールで即時。Apache と違いサービス停止を伴わない |
 
 ### F3. セキュリティグループ（補完。単独では不可）
@@ -160,8 +166,19 @@ pri 4: (既存 pri2) 5ホスト               → forward Onboarding-dev
 EC2 と ALB が SG `sg-0f8d08ae1663d8f2b` を**共有**しており、
 80 / 443 / 20 / 21 / 40000-40010 / 60001-60010 が `0.0.0.0/0` に開いている。
 
-80/443 を ALB 経由のみに絞ることで EC2 直叩きを塞げるが、**SG を共有しているため自己参照ルールが必要**。
-ALB 自身の受信まで閉じないよう、適用時に注意を要する。
+**既存 SG の `0.0.0.0/0` は消せない。** 消すと ALB 自身が外部からの接続を受けられなくなる。
+EC2 専用の SG を新設して差し替える。
+
+EC2 の実状は次のとおり（2026-10-15 確認）。
+
+| 項目 | 結果 |
+| --- | --- |
+| listen しているポート | **80 と 21（FTP）のみ** |
+| 443 | **listen していない**。ALB が終端し EC2 へは 80 で転送している |
+| FTP（21） | 外部から接続可能で、現に稼働している |
+
+したがって新 SG で変更するのは **80 番のみ**（ALB の SG からのみ許可）。
+443 は EC2 が開いていないため引き継がず、**FTP 関連はそのまま引き継いで現行の運用に影響を出さない**。
 
 ## 3. API 側の方式比較
 

@@ -56,10 +56,28 @@ prod と dev は間隔を空けて 1 件ずつ実行する。
 
 | ドメイン | 状態 | regionalDomainName |
 | --- | --- | --- |
-| `tools-api.onboarding-app.io` | **作成済み・マッピング済み**（prod / `4gg04tjv40`） | `d-1wjm068e34.execute-api.ap-northeast-1.amazonaws.com` |
-| `dev-tools-api.onboarding-app.io` | **作成済み・マッピング済み**（dev / `typ566gsc5`） | `d-c3lkajncv1.execute-api.ap-northeast-1.amazonaws.com` |
+| `tools-api.onboarding-app.io` | **カスタムドメイン作成・マッピング済み**（prod / `4gg04tjv40`） | `d-1wjm068e34.execute-api.ap-northeast-1.amazonaws.com` |
+| `dev-tools-api.onboarding-app.io` | **カスタムドメイン作成・マッピング済み**（dev / `typ566gsc5`） | `d-c3lkajncv1.execute-api.ap-northeast-1.amazonaws.com` |
 
-1-1 と 1-2 は実施済み。**次は 1-3 の Cloudflare DNS 登録（管理画面作業）。**
+**DNS（1-3）は未登録の状態にしておく。** 「実施順序」のとおり、リソースポリシーを適用してから紐づける。
+
+#### 一度登録して外した経緯（2026-10-15）
+
+手順の誤りにより、リソースポリシー適用前に DNS を登録した（変更 ID `C0163703112YPDH89APQD`）。
+約 5 分後に削除。この間の Lambda 呼び出しは確認作業の 3 件（prod 2 / dev 1）のみで、
+第三者のアクセスは観測されていない。
+
+登録時の到達確認では、Cloudflare を経由せず API Gateway へ直接届くことを確認できた。
+この経路自体は設計どおりである。
+
+```
+$ dig +short tools-api.onboarding-app.io
+16.76.173.248 / 35.75.124.4 / 13.192.27.43    ← AWS の IP（Cloudflare の 104.x / 172.66.x ではない）
+
+$ curl -sI https://tools-api.onboarding-app.io/tools/accounts
+HTTP/2 200
+x-amzn-requestid: ...                          ← cf-ray も server: cloudflare も付かない
+```
 
 ### 1-2. ベースパスマッピングを作る
 
@@ -299,15 +317,46 @@ aws ec2 modify-instance-attribute --region ap-northeast-1 \
 
 ## 実施順序
 
-API を先に行う。画面には BASIC 認証があるが、API には認証が無く現に素通しのため。
+**DNS の紐づけは、IP 制限が効いたあとに行う。**
+
+`onboarding-app.io` はセキュリティインシデントにより探索されている可能性があるため、
+リソースポリシー未適用のまま DNS を向けると、**無防備な新しい攻撃面を公開することになる**。
+ダウンタイムを許容してでも、制限を先に効かせる（2026-10-15 判断）。
 
 ```
-1. フェーズ1（API）  … 1-1 → 1-2 → 1-3 → 1-4 → 1-5
-2. フロントのリリース … onboarding-account-manager を rsync でデプロイ
-3. フェーズ2（ALB・SG）… 2-1 → 2-2 → 2-3 → 2-4
+1. 1-1 / 1-2    カスタムドメイン作成・ベースパスマッピング       ← 完了済み
+2. 1-4          onboarding-api をデプロイ（リソースポリシー適用）
+3. 1-3          Route53 に DNS を登録
+4.              フロントを rsync デプロイ
+5. 1-5          検証
+6. フェーズ2     2-1 → 2-2 → 2-3 → 2-4
 ```
 
-**フロントのリリースはフェーズ 1 の後に行う。** 専用ドメインが出来る前に向き先を変えると管理ツールが動かなくなる。
+**ステップ 2 〜 4 の間、管理ツールは停止する。** `api.onboarding-app.io/tools/*` は
+送信元が Cloudflare の IP と判定されて 403 になり、専用ドメインはまだ DNS が無いため到達できない。
+
+### カスタムドメインを残したまま DNS だけ外してよい理由
+
+API Gateway のカスタムドメインは **Host ヘッダが一致しないと振り分けられない**。
+DNS が無ければドメイン名の発見が困難で、`regionalDomainName` に直接アクセスしても到達しない。
+証明書はワイルドカード（`*.onboarding-app.io`）のため、証明書透明性ログにも個別名は出ない。
+
+### DNS を一時的に外す
+
+誤って先に登録してしまった場合は、`"Action"` を `"DELETE"` にして同じ change-batch を実行する。
+
+```bash
+aws route53 change-resource-record-sets --hosted-zone-id ZHAD232M1QO6V --change-batch '{
+  "Comment": "ONBS-2118 IP制限適用まで一時削除",
+  "Changes": [
+    {"Action":"DELETE","ResourceRecordSet":{"Name":"tools-api.onboarding-app.io","Type":"A","AliasTarget":{"HostedZoneId":"Z1YSHQZHG15GKL","DNSName":"d-1wjm068e34.execute-api.ap-northeast-1.amazonaws.com.","EvaluateTargetHealth":true}}},
+    {"Action":"DELETE","ResourceRecordSet":{"Name":"dev-tools-api.onboarding-app.io","Type":"A","AliasTarget":{"HostedZoneId":"Z1YSHQZHG15GKL","DNSName":"d-c3lkajncv1.execute-api.ap-northeast-1.amazonaws.com.","EvaluateTargetHealth":true}}}
+  ]
+}'
+```
+
+`DELETE` は `ResourceRecordSet` が登録内容と完全一致している必要がある。
+
 `onboarding-account-manager` は CI が無く、`scripts/deploy.sh`（rsync）による手動デプロイ。
 
 ## 残課題

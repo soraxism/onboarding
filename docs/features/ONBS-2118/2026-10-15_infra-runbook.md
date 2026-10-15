@@ -129,10 +129,31 @@ curl -s -o /dev/null -w "%{http_code}\n" https://tools-api.onboarding-app.io/too
 ### 1-4. デプロイ
 
 `hotfixes/ONBS-2118` を `release` 経由で `main` へマージすると GitHub Actions が prod へデプロイする。
-dev へ反映する場合は `develop` へマージする（CLAUDE.md「dev 環境へのデプロイ」）。
 
 リソースポリシーはステージへの再デプロイで反映される。`serverless deploy` がこれを行うため、
 手動の `create-deployment` は不要。
+
+#### prod だけでは終わらない。dev のデプロイを必ず別途起動する
+
+**`main` へのマージで `develop` のコードは同期されるが、dev へのデプロイは起動しない。**
+リソースポリシーは `serverless.yml` に書くため dev ステージにも適用されるべきだが、
+デプロイしない限り dev API（`typ566gsc5`）のポリシーは `None` のまま残る。
+
+2026-10-15 の作業では、これを見落として `dev-tools-api.onboarding-app.io` を
+**制限が効いていない状態で DNS 登録してしまった**（prod は 403、dev は 200 で通過）。
+
+```bash
+# develop に変更が入っていることを確認
+git show origin/develop:src/serverless.yml | grep -c resourcePolicy
+
+# dev のポリシーを確認（None なら未適用）
+aws apigateway get-rest-api --region ap-northeast-1 --rest-api-id typ566gsc5 --query 'policy' --output text
+
+# dev デプロイを手動起動（development.yml に workflow_dispatch がある）
+gh workflow run "Build and Deploy (development)" --repo stands/Onboarding-API --ref develop
+```
+
+**DNS を登録する前に、prod と dev の両方でポリシーが適用済みであることを確認する。**
 
 ### 1-5. 検証
 

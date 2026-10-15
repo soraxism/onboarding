@@ -131,36 +131,47 @@ aws apigateway create-deployment --region ap-northeast-1 --rest-api-id 4gg04tjv4
 
 ## フェーズ 2: ALB とセキュリティグループ
 
-### 2-1. 既存ルールの優先度をずらす
+### 2-1. 既存ルールを 1 本だけ移動する
 
-新ルールを 1・2 に入れるため、既存の 1・2 を 3・4 へ移す。`set-rule-priorities` は原子的に適用される。
+**コーポレート（`onboarding.co.jp` / `www`）の pri 1 は動かさない。** `/tools/*` の制限ルールは
+既存 pri 2 より前にあれば足り、pri 1 より前である必要がない（ホストが重複しないため）。
+移動するのは既存 pri 2 の 1 本だけ。
+
+```
+pri 1  [既存・不変]  onboarding.co.jp / www        → forward onboarding-lp-prd
+pri 2  [新規]        5ホスト + /tools/* + VPN IP   → forward Onboarding-dev
+pri 3  [新規]        5ホスト + /tools/*            → fixed-response 403
+pri 4  [既存を移動]  5ホスト                        → forward Onboarding-dev
+```
 
 ```bash
 LISTENER=arn:aws:elasticloadbalancing:ap-northeast-1:091413534636:listener/app/onboarding-dev/fd7258130f2b6515/f1c4c824c08b7b28
 
 aws elbv2 set-rule-priorities --region ap-northeast-1 --rule-priorities \
-  RuleArn=arn:aws:elasticloadbalancing:ap-northeast-1:091413534636:listener-rule/app/onboarding-dev/fd7258130f2b6515/f1c4c824c08b7b28/d627b2bb7d8e6681,Priority=3 \
   RuleArn=arn:aws:elasticloadbalancing:ap-northeast-1:091413534636:listener-rule/app/onboarding-dev/fd7258130f2b6515/f1c4c824c08b7b28/a6eba844377ef9af,Priority=4
 ```
+
+移動中は pri 2・3 が空くが、5 ホストへのアクセスは pri 4 が従来どおり処理するためダウンタイムは生じない。
 
 ### 2-2. 許可ルールと拒否ルールを作る
 
 ホストは **5 つすべてを列挙する**。`dev.onboarding.co.jp` だけでは `dev-api` と `dev-beacon` から素通りする
-（設計書 1-2 を参照）。
+（設計書 1-2 を参照）。`path-pattern` は `/tools/*` のみを対象とするため、
+`/demo/` `/iguider/` は pri 4 で従来どおり通り、影響を受けない。
 
 ```bash
 HOSTS='["dev.onboarding.co.jp","dev-api.onboarding.co.jp","dev-beacon.onboarding.co.jp","dev-reporting.onboarding.co.jp","gallery.onboarding-app.io"]'
 TG=arn:aws:elasticloadbalancing:ap-northeast-1:091413534636:targetgroup/Onboarding-dev/bc28151160618278
 
-# 優先度 1: VPN からの /tools/* を通す
-aws elbv2 create-rule --region ap-northeast-1 --listener-arn $LISTENER --priority 1 \
+# 優先度 2: VPN からの /tools/* を通す
+aws elbv2 create-rule --region ap-northeast-1 --listener-arn $LISTENER --priority 2 \
   --conditions "[{\"Field\":\"host-header\",\"HostHeaderConfig\":{\"Values\":$HOSTS}},
                  {\"Field\":\"path-pattern\",\"PathPatternConfig\":{\"Values\":[\"/tools/*\"]}},
                  {\"Field\":\"source-ip\",\"SourceIpConfig\":{\"Values\":[\"153.125.137.243/32\"]}}]" \
   --actions "[{\"Type\":\"forward\",\"TargetGroupArn\":\"$TG\"}]"
 
-# 優先度 2: それ以外の /tools/* を拒否する
-aws elbv2 create-rule --region ap-northeast-1 --listener-arn $LISTENER --priority 2 \
+# 優先度 3: それ以外の /tools/* を拒否する
+aws elbv2 create-rule --region ap-northeast-1 --listener-arn $LISTENER --priority 3 \
   --conditions "[{\"Field\":\"host-header\",\"HostHeaderConfig\":{\"Values\":$HOSTS}},
                  {\"Field\":\"path-pattern\",\"PathPatternConfig\":{\"Values\":[\"/tools/*\"]}}]" \
   --actions '[{"Type":"fixed-response","FixedResponseConfig":{"StatusCode":"403","ContentType":"text/plain","MessageBody":"Forbidden"}}]'
@@ -173,32 +184,60 @@ HTTP リスナー（80）は HTTPS へリダイレクトするだけなので、
 **ALB と EC2 が SG を共有しているため、既存 SG の `0.0.0.0/0` を消してはならない。**
 消すと ALB 自身が外部からの接続を受けられなくなる。EC2 用の SG を新設して差し替える。
 
+#### EC2 の実状（2026-10-15 確認）
+
+| 項目 | 結果 |
+| --- | --- |
+| listen しているポート | **80 と 21（FTP）のみ** |
+| 443 | **listen していない**。ALB が終端し EC2 へは 80 で転送している |
+| FTP（21） | 外部から接続可能で、現に稼働している |
+
+したがって新 SG では **443 を引き継がない**（EC2 が開いていないため不要）。
+**FTP 関連（20 / 21 / 40000-40010 / 60001-60010）はそのまま引き継ぎ、現行の運用に影響を出さない。**
+
 ```bash
+VPC_ID=$(aws ec2 describe-instances --region ap-northeast-1 \
+  --instance-ids i-0d78a0c019c2a71ea --query 'Reservations[0].Instances[0].VpcId' --output text)
+
 # 1) EC2 専用の SG を作る
 SG_EC2=$(aws ec2 create-security-group --region ap-northeast-1 \
   --group-name onboarding-dev-ec2 \
-  --description "onboarding-dev EC2 (ALB からの HTTP のみ)" \
-  --vpc-id <VPC_ID> --query 'GroupId' --output text)
+  --description "onboarding-dev EC2 (HTTP は ALB 経由のみ)" \
+  --vpc-id $VPC_ID --query 'GroupId' --output text)
 
-# 2) ALB の SG からの 80 のみ許可する
+# 2) HTTP は ALB の SG からのみ
 aws ec2 authorize-security-group-ingress --region ap-northeast-1 \
   --group-id $SG_EC2 --protocol tcp --port 80 --source-group sg-0f8d08ae1663d8f2b
 
-# 3) SSH は従来どおり踏み台の SG から
+# 3) SSH は踏み台の SG から（現行どおり）
 aws ec2 authorize-security-group-ingress --region ap-northeast-1 \
   --group-id $SG_EC2 --protocol tcp --port 22 --source-group sg-0d222818fd975c6a9
 
-# 4) EC2 の SG を差し替える
+# 4) FTP は現行のまま引き継ぐ（稼働中のため閉じない）
+aws ec2 authorize-security-group-ingress --region ap-northeast-1 \
+  --group-id $SG_EC2 --ip-permissions \
+    'IpProtocol=tcp,FromPort=20,ToPort=21,IpRanges=[{CidrIp=0.0.0.0/0}]' \
+    'IpProtocol=tcp,FromPort=40000,ToPort=40010,IpRanges=[{CidrIp=0.0.0.0/0}]' \
+    'IpProtocol=tcp,FromPort=60001,ToPort=60010,IpRanges=[{CidrIp=0.0.0.0/0}]'
+
+# 5) EC2 の SG を差し替える
 aws ec2 modify-instance-attribute --region ap-northeast-1 \
   --instance-id i-0d78a0c019c2a71ea --groups $SG_EC2
 ```
 
-**差し替え前に FTP の利用有無を確認すること。** 現行 SG では 20 / 21 / 40000-40010 / 60001-60010 が
-`0.0.0.0/0` に開いている。使われているなら新 SG にも同等のルールが要る。
-使われていないなら、この機会に閉じる（本手順では引き継いでいない）。
+#### 適用前に確認すること
 
-SSH は `ProxyCommand` で `onb-gw`（`18.180.20.230`）を経由しており、踏み台の SG
-`sg-0d222818fd975c6a9` からの 22 番を許可すれば従来どおり接続できる。
+**EC2 のパブリック IP に直打ちしているアクセスが無いか。** あると `/demo/` `/iguider/` を
+IP 指定で開いている開発者に影響が出る（ドメイン経由なら影響しない）。
+
+mod_remoteip が未設定のため、ALB 経由のアクセスはログに ALB の内部 IP（`172.31.x.x`）として記録される。
+**`172.31.` 以外の送信元が出てくれば、それが ALB を迂回した直アクセス。**
+
+```bash
+sudo awk '{print $1}' /etc/httpd/logs/access_log | grep -v '^172\.31\.' | sort | uniq -c | sort -rn | head
+```
+
+何も出なければ直打ちのアクセスは無く、そのまま適用してよい。
 
 ### 2-4. 検証
 
@@ -256,5 +295,7 @@ API を先に行う。画面には BASIC 認証があるが、API には認証�
 
 - フェーズ 3（Apache の `mod_remoteip` + `Require ip`）。vhost 追加時の取りこぼしを恒久的に防ぐ多層防御
 - `/tools/*` と `/segment-update` に認証機構が無い。IP 制限は暫定措置
-- EC2 の FTP（20/21）と 40000-40010 / 60001-60010 が `0.0.0.0/0` に開いている
+- EC2 の FTP（20/21）と 40000-40010 / 60001-60010 が `0.0.0.0/0` に開いている。
+  **本対応では現行の運用に影響を出さないため現状維持とする**（2026-10-15 判断）。
+  FTP は認証情報が平文で流れるため、恒久的には SFTP への移行や送信元の限定を別途検討する余地がある
 - ALB の両ターゲットグループが `unhealthy` 状態のまま

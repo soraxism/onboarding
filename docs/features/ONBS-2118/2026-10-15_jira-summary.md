@@ -99,5 +99,6 @@ CloudFormation への反映処理（`lib/plugins/aws/package/compile/events/api-
 
 - フェーズ 3（Apache の多層防御）
 - `/tools/*` と `/segment-update` に認証機構が無く、本対応は IP 制限による暫定措置
+- **ONBS-2119**: json-update 画面の環境セレクタが機能せず、常に本番データが更新される（CodeRabbit レビューで判明した既存バグ。本対応とは独立）
 - EC2 の FTP（20/21）と 40000-40010 / 60001-60010 が `0.0.0.0/0` に開いている
 - ALB の両ターゲットグループが `unhealthy` 状態のまま

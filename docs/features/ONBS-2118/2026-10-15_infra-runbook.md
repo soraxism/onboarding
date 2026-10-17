@@ -244,25 +244,33 @@ aws elbv2 set-rule-priorities --region ap-northeast-1 --rule-priorities \
 
 ### 2-2. 許可ルールと拒否ルールを作る
 
-ホストは **5 つすべてを列挙する**。`dev.onboarding.co.jp` だけでは `dev-api` と `dev-beacon` から素通りする
-（設計書 1-2 を参照）。`path-pattern` は `/tools/*` のみを対象とするため、
-`/demo/` `/iguider/` は pri 4 で従来どおり通り、影響を受けない。
+**host-header 条件は付けない。** ALB は 1 ルールあたりの条件値が最大 5 個で、
+ホスト 5 値 + パス 1 値 + IP 1 値 = 7 値となり `ValidationError` で作成できない。
+
+```
+An error occurred (ValidationError) when calling the CreateRule operation:
+A rule can only have '5' condition values and regex values
+```
+
+host-header を外しても問題はなく、**むしろ安全になる**。
+
+- コーポレート（`onboarding.co.jp` / `www`）は **pri 1 で先にマッチして確定する**ため、新ルールに到達しない
+- ホストを列挙しないので、**将来 vhost が増えても自動的に守られる**（列挙漏れが起きない）
+- `path-pattern` は `/tools/*` のみなので `/demo/` `/iguider/` は pri 4 で従来どおり通る
 
 ```bash
-HOSTS='["dev.onboarding.co.jp","dev-api.onboarding.co.jp","dev-beacon.onboarding.co.jp","dev-reporting.onboarding.co.jp","gallery.onboarding-app.io"]'
+LISTENER=arn:aws:elasticloadbalancing:ap-northeast-1:091413534636:listener/app/onboarding-dev/fd7258130f2b6515/f1c4c824c08b7b28
 TG=arn:aws:elasticloadbalancing:ap-northeast-1:091413534636:targetgroup/Onboarding-dev/bc28151160618278
 
 # 優先度 2: VPN からの /tools/* を通す
 aws elbv2 create-rule --region ap-northeast-1 --listener-arn $LISTENER --priority 2 \
-  --conditions "[{\"Field\":\"host-header\",\"HostHeaderConfig\":{\"Values\":$HOSTS}},
-                 {\"Field\":\"path-pattern\",\"PathPatternConfig\":{\"Values\":[\"/tools/*\"]}},
-                 {\"Field\":\"source-ip\",\"SourceIpConfig\":{\"Values\":[\"153.125.137.243/32\"]}}]" \
+  --conditions '[{"Field":"path-pattern","PathPatternConfig":{"Values":["/tools/*"]}},
+                 {"Field":"source-ip","SourceIpConfig":{"Values":["153.125.137.243/32"]}}]' \
   --actions "[{\"Type\":\"forward\",\"TargetGroupArn\":\"$TG\"}]"
 
 # 優先度 3: それ以外の /tools/* を拒否する
 aws elbv2 create-rule --region ap-northeast-1 --listener-arn $LISTENER --priority 3 \
-  --conditions "[{\"Field\":\"host-header\",\"HostHeaderConfig\":{\"Values\":$HOSTS}},
-                 {\"Field\":\"path-pattern\",\"PathPatternConfig\":{\"Values\":[\"/tools/*\"]}}]" \
+  --conditions '[{"Field":"path-pattern","PathPatternConfig":{"Values":["/tools/*"]}}]' \
   --actions '[{"Type":"fixed-response","FixedResponseConfig":{"StatusCode":"403","ContentType":"text/plain","MessageBody":"Forbidden"}}]'
 ```
 
@@ -410,6 +418,62 @@ aws route53 change-resource-record-sets --hosted-zone-id ZHAD232M1QO6V --change-
 `DELETE` は `ResourceRecordSet` が登録内容と完全一致している必要がある。
 
 `onboarding-account-manager` は CI が無く、`scripts/deploy.sh`（rsync）による手動デプロイ。
+
+## 実施結果（2026-10-18 時点）
+
+フェーズ 1・2 とも完了。
+
+### フェーズ 1（API）
+
+| 項目 | 値 |
+| --- | --- |
+| タグ | `2.53.4`（prod）。dev は `workflow_dispatch` で手動デプロイ |
+| リソースポリシー | prod `4gg04tjv40` / dev `typ566gsc5` とも適用済み |
+| カスタムドメイン | `tools-api` → `d-1wjm068e34...` / `dev-tools-api` → `d-c3lkajncv1...` |
+| Route53 | ALIAS（A）で登録。Cloudflare 非経由 |
+| フロント | `Onboarding-Account-Manager` を rsync でデプロイ済み |
+
+### フェーズ 2（ALB・SG）
+
+ALB `onboarding-dev` の HTTPS リスナー構成。
+
+| 優先度 | 条件 | 動作 |
+| --- | --- | --- |
+| 1 | host `onboarding.co.jp` / `www` | forward `onboarding-lp-prd`（**変更していない**） |
+| 2 | path `/tools/*` + source-ip `153.125.137.243/32` | forward `Onboarding-dev` |
+| 3 | path `/tools/*` | fixed-response 403 |
+| 4 | host 5 件（旧 pri 2 を移動） | forward `Onboarding-dev` |
+| default | — | forward `onboarding-lp-prd` |
+
+セキュリティグループ。
+
+| 項目 | 値 |
+| --- | --- |
+| 新 SG | `sg-09f1b18be58c59233`（`onboarding-dev-ec2`） |
+| 80 | `sg-0f8d08ae1663d8f2b`（ALB）からのみ |
+| 22 | `sg-0d222818fd975c6a9`（踏み台）から |
+| 20-21 / 40000-40010 / 60001-60010 | `0.0.0.0/0`（FTP。現状維持） |
+| 443 | 引き継がず（EC2 が listen していない） |
+| 既存 SG | **変更していない**（コーポレートの EC2 `i-01d768c75392d8a32` も使用中のため） |
+
+適用前に Apache のアクセスログを全期間확認し、ALB 経由（`172.31.x.x`）以外の送信元が
+**1 件も無い**ことを確認した。
+
+### 検証結果
+
+| 経路 | VPN 外 | VPN 内 |
+| --- | --- | --- |
+| `dev.onboarding.co.jp/tools/manager/` | 403 | 401（BASIC 認証） |
+| `dev.onboarding.co.jp/tools/developer/` | 403 | 401 |
+| `dev-api.onboarding.co.jp/tools/manager/` | 403 | — |
+| `tools-api.onboarding-app.io/tools/accounts` | 403 | 200 |
+| `api.onboarding-app.io/tools/accounts` | 403 | 403（Cloudflare 経由のため常に拒否） |
+| `http://18.177.122.187/tools/manager/` | **到達せず** | **到達せず** |
+| `dev.onboarding.co.jp/demo/` `/iguider/` | 401 | 401（**影響なし**） |
+| `onboarding.co.jp/` | 200 | 200（**影響なし**） |
+| `gallery.onboarding-app.io/` | — | 200（**影響なし**） |
+| SSH（踏み台経由） | — | 接続可 |
+| FTP（21） | 接続可 | 接続可 |
 
 ## 残課題
 

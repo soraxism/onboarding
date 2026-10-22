@@ -149,3 +149,100 @@ ONBS_WS_URL="wss://dev-ai.onboarding-app.io" python onbs2100-2101-dev-check.py
 | 4 | 正常系のヒント生成 | **DBが必要**。これだけは夜間不可 |
 
 **1〜3はDBに到達しない**（`json.loads` 失敗時点で `$default` として早期 return するため）。
+
+---
+
+# dev 動作確認の結果（2026-10-22 実施）
+
+10/13 に dev環境のDB停止で保留していた確認を実施した。あわせて追加対応を1件取り込んでいる。
+
+## 追加対応: API Gateway の CloudWatch ロールを Serverless に管理させない
+
+`provider.logs.websocket` を有効にした**副作用**として、Serverless v3 は API Gateway の
+アカウント設定を確認するカスタムリソース `CustomApiGatewayAccountCloudWatchRole` を自動で追加し、
+その実装 Lambda が **nodejs18.x（EOL）固定**で作られていた（ONBS-2220 の棚卸しで発覚）。
+
+```yaml
+provider:
+  logs:
+    restApi:
+      roleManagedExternally: true   # Serverless に管理させない
+```
+
+### 安全性の確認
+
+| 確認項目 | 結果 |
+| --- | --- |
+| アカウントの CloudWatch ロール | `API-Log-CloudWatch-Role` → **`serverlessApiGatewayCloudWatchRole` に変わっていた** |
+| 2つのロールのポリシー | 同一（`AmazonAPIGatewayPushToCloudWatchLogs`）。機能差なし |
+| ロールは CFN 管理か | **管理外**（カスタムリソースの Lambda が実行時に作成）。スタックから消えても残る |
+| カスタムリソースの `remove()` | **no-op**。アカウント設定もロールも触らない |
+
+**10/13 の dev デプロイで、アカウント全体の API Gateway CloudWatch ロール設定が書き換わっていた。**
+当時「アカウントに設定済みなので追加の IAM 作成は発生しない」と判断したのは誤りで、
+Serverless は既存設定があっても自前のロールを作って差し替える。ポリシーが同一だったため実害は無かった。
+
+### 反映後
+
+カスタムリソースと nodejs18.x Lambda はスタックから消え、
+アカウント設定とロールは想定どおり残った（アクセスログは動作継続）。
+
+## 注意: develop は 10/20 のリリースで作り直されていた
+
+`Sync Branches from Release` が PR #120（10/20 16:18）のマージで動き、
+**10/13 に develop へ入れた ONBS-2100 / ONBS-2101 のマージが両方とも消えていた。**
+
+AWS 側の設定は残っていたため気づきにくいが、**次の dev デプロイで消える状態**だった。
+10/22 に両ブランチを develop へ入れ直している。
+
+リリース前には必ず `git log origin/main..origin/develop` で確認すること。
+
+## 確認結果
+
+### ONBS-2101: JSONパース失敗でクラッシュしない
+
+| 送信内容 | 結果 |
+| --- | --- |
+| `'not-json-at-all'` | 接続維持。`Invalid JSON body (len=15)` がログに記録 |
+| `'{"action":'` | 接続維持。`Invalid JSON body (len=10)` がログに記録 |
+| `''`（空文字列） | 接続維持。**ログ出力なし**（下記） |
+
+**`JSONDecodeError` は0件、エラー系ログも0件。**
+
+空文字列でログが出ないのは、API Gateway が空フレームでは `body` キー自体を event に含めないため。
+`if "body" in event` が False となり、パースを試みない既存の経路を通る（クラッシュはしない）。
+
+### アクセスログに送信元IPが記録される
+
+```
+<IP> - - [22/Oct/2026:05:56:14 +0000] "CONNECT $connect geTnnk_SEbGYKEhp6A==" FobL3F4HtjMEJFQ=
+<IP> - - [22/Oct/2026:05:56:17 +0000] "MESSAGE $default geTnnk_SEbGYKEhp6A==" FobMXFAyNjMEOBw=
+```
+
+### ONBS-2100: 流量制限の実発火
+
+40接続を同時に張って測定した（メッセージは送らず接続・切断のみ）。
+
+| 指標 | 値 |
+| --- | --- |
+| 接続成功 | 23件 |
+| 拒否（HTTP 500） | 17件 |
+| アクセスログの CONNECT | 44件（40 + 先行テスト4） |
+| **Lambda Throttles** | **19** |
+| Lambda Errors | 0 |
+
+**拒否したのは Lambda の予約同時実行（20）であり、ステージのスロットリングではない。**
+40接続はすべて API Gateway に到達しており、ステージ側（10件/秒・バースト20）は発火していない。
+
+これはチケットで述べた「タイムアウト120秒のため、スロットリングだけでは理屈上1,200並列まで
+伸びうる。実効的な歯止めは予約同時実行」という想定どおりの挙動。
+
+#### 把握しておくべき副作用
+
+**20接続を超える同時接続は拒否され、クライアントには HTTP 500 が返る。**
+
+14日間の実測で同時実行数の最大は4なので通常は届かないが、
+`$connect` / `$disconnect` も同時実行数を消費するため、瞬間的な接続集中では到達しうる。
+正規利用で発生するようなら `reservedConcurrency` を引き上げる。
+
+ステージのスロットリングは**設定の適用は確認済みだが、発火は未実測**。

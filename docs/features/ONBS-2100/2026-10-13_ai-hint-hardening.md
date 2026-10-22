@@ -267,3 +267,91 @@ AIチャット（`Onboarding-AI-Chat` の `WebSocketClient`）が指数バック
 
 ステージのスロットリングは**設定の適用は確認済みだが、発火は未実測**。
 40接続はすべて API Gateway に到達しており、ステージ側（10件/秒・バースト20）は発火しなかった。
+
+---
+
+# リリース結果（2026-10-22）
+
+タグ **`1.40.0`** を発行し、本番へ反映済み。
+
+| PR | 内容 |
+| --- | --- |
+| [#121](https://github.com/stands/Onboarding-AI-Server/pull/121) | ONBS-2101 |
+| [#122](https://github.com/stands/Onboarding-AI-Server/pull/122) | ONBS-2100 |
+| [#123](https://github.com/stands/Onboarding-AI-Server/pull/123) | `20261022 Release`（release → main） |
+
+## 本番への反映確認
+
+| 設定 | 変更前 | 変更後 |
+| --- | --- | --- |
+| ThrottlingRateLimit | `null`（アカウント既定 10,000 req/s） | 10 件/秒 |
+| ThrottlingBurstLimit | `null` | 20 |
+| DataTraceEnabled | — | false |
+| LoggingLevel | — | ERROR |
+| アクセスログ | なし | `/aws/websocket/onboarding-ai-server-prod`（保持90日） |
+| Lambda 予約同時実行 | **未設定**（無予約枠 957 まで） | **100** |
+| nodejs18.x カスタムリソース | — | なし |
+
+本番WSへの接続、および直近の正規トラフィック（Invocations 10 / Throttles 0 / Errors 0）も確認済み。
+
+## CodeRabbit の指摘と対応（2件とも妥当だった）
+
+### 1. 不正なJSONの本文をログに残さない
+
+`DataTraceEnabled: false` にしたのは顧客のチャット内容を CloudWatch に残さないためだが、
+**Lambda のログに生の本文を書けば同じことが起きる**（Lambda のロググループはその設定の対象外）。
+
+さらに「JSON として読めなかったものだけが対象だから顧客データの懸念は小さい」という当初の判断も誤りで、
+**正規のペイロードが途中で切れた場合も JSON として読めない**ため `promptInput` やユーザー識別子が入りうる。
+
+本文の記録をやめ、長さと SHA-256 の先頭16桁のみに変更した。
+
+```python
+digest = hashlib.sha256(body.encode("utf-8", "replace")).hexdigest()[:16]
+logger.warning(f"Invalid JSON body (len={len(body)}, sha256={digest})")
+```
+
+「同じ本文が何度来たか」「種類がいくつあるか」は追えるため、探索の規模や継続性の判断には足りる。
+
+### 2. `DefaultRouteSettings` はルート単位であって、ステージ全体の合計ではない
+
+**「ステージ全体の合計」と書いていたのは誤り。**
+
+ドキュメントでは断定できなかったため（WebSocket向けページが読めず、CloudFormation の
+`RouteSettings` も `ThrottlingRateLimit` の粒度を明記していない）、dev で実測した。
+
+4ルート（`aiHint` / `$connect` / `$disconnect` / `$default`）がそれぞれ 10件/秒 を持つため、
+同じ Lambda に入る合計は理屈上 **40件/秒**まで伸びうる。
+正規ピーク 0.18件/秒 に対して 200倍以上の余裕があり、最終的な歯止めは `reservedConcurrency` が担うため
+**設定値は変えず、コメントで粒度を正しく書くに留めた**。
+
+ステージ合計を縛る手段は API Gateway v2 の WebSocket API には見当たらない
+（ドキュメント上、集計されるのはアカウント単位の上限のみ）。
+
+## 両方の防御が発火することを実測した
+
+120接続を 4.7 秒で集中させた結果。
+
+| 結果 | 件数 | 原因 |
+| --- | --- | --- |
+| 成功 | 100 | — |
+| **拒否 HTTP 429** | **10** | **ゲートウェイのスロットリング** |
+| 拒否 HTTP 500 | 10 | 予約同時実行（同時実行数の最大 99 ＝ 上限 100 に到達） |
+
+これまで「設定の適用は確認済みだが発火は未実測」としていたゲートウェイ側も、429 として確認できた。
+
+## 作業上の注意
+
+### pre-commit の black が他者のファイルを再整形する
+
+`release` を取り込んだ際、pre-commit が `ai.py` / `test_outbound_guard.py`
+（`fix/restrict-external-destinations` 由来）を再整形し、PR の差分に混入した。
+import の折り返し・行幅という純粋な整形差分で、**black の解釈が環境間で揺れている可能性がある**。
+
+他者のファイルに整形差分が出たら `git checkout origin/release -- <path>` で戻し、
+確定は `--no-verify` で行う。
+
+### `release` 取り込み時は `resources:` ブロックが必ず衝突する
+
+ONBS-2100 と ONBS-2101 は別リソース（`WebsocketsDeploymentStage` と `WebsocketsLogGroup`）なので、
+両方を残す形で解消してよい。解消後は `serverless package` で最終形を検証すること。

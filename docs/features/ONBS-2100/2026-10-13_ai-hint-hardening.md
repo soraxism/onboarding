@@ -355,3 +355,108 @@ import の折り返し・行幅という純粋な整形差分で、**black の�
 
 ONBS-2100 と ONBS-2101 は別リソース（`WebsocketsDeploymentStage` と `WebsocketsLogGroup`）なので、
 両方を残す形で解消してよい。解消後は `serverless package` で最終形を検証すること。
+
+---
+
+# 【重要】スロットリングは撤去した（2026-10-22 / `1.40.1`）
+
+**`1.40.0` のリリース直後、本番でAIヒントの応答配信が止まった。**
+
+本件の対応のうち**有効なのは `reservedConcurrency: 100` のみ**。
+ステージのスロットリングは使えないため入っていない。
+
+## 何が起きたか
+
+| 時刻 | 出来事 |
+| --- | --- |
+| 18:06:58 | `1.40.0` 本番デプロイ完了（スロットリング 10件/秒 が有効化） |
+| **18:14:11〜18:15:23** | **`TooManyRequestsException` が4件** |
+| 18:2x | 手動でアカウント既定値へ緩和（顧客影響の停止） |
+| 19:01 | `1.40.1` で IaC を修正・本番反映 |
+
+```
+Failed to send request to Dify: An error occurred (TooManyRequestsException)
+when calling the PostToConnection operation (reached max retries: 4): Too Many Requests
+```
+
+影響: プロダクト344（レコル）／プロダクト41（フリーウェイ給与計算）。
+リトライ4回を使い切っており、**該当ユーザーには回答が届いていない。**
+
+## 原因: `@connections` もステージの throttle を共有する
+
+AIヒントは Dify のストリーミング応答を**チャンクごとに `post_to_connection`** で返す
+（`ai.py:50` → `response.py:114`）。この `@connections` への送信もステージの throttle の対象になる。
+
+1回の応答で数十チャンクを送るうえ複数の応答が同時に走るため、10件/秒 は即座に超過する。
+
+### ルート個別設定でも回避できない
+
+`RouteSettings` でルートごとに設定しても `@connections` は除外されない。dev で実測した。
+
+| 設定 | 逐次 13件/秒 | 並列 63件/秒 |
+| --- | --- | --- |
+| `DefaultRouteSettings` 10/20 | — | 300件/秒で **36/200 拒否** |
+| `RouteSettings` 10/20 のみ（Default解除） | **15/100 拒否** | 6/200 拒否 |
+| すべて解除 | 3/100 | **0/200** |
+
+## そもそもスロットリングは不要だった
+
+要件は「Lambda の同時実行枠を食い潰して他システムへ波及させない」こと。
+**これは同時実行の問題であって流量の問題ではなく、`reservedConcurrency` のみで足りた。**
+
+- 120接続テストで実効的な歯止めだったのは予約同時実行（Lambda Throttles 19）
+- 2026-10-13 の不審アクセスも 37件/2分 で、現実的などの閾値にも引っかからない
+
+**要件を満たす手段が1つあるのに多層防御として重ねたことが根本原因。**
+副作用の見落としも、dev で正規の応答を1件も通さずにリリースしたことも、その帰結だった。
+
+同じ判断を繰り返さないよう、`onboarding/CLAUDE.md` に
+「実装に入る前の確認（要件を満たす最小の手段か）」を追加した（`f80fab9`）。
+
+## 撤去ではなく「既定値の明示」にした理由
+
+**テンプレートからスロットリングを省いても実体からは消えない。**
+API Gateway v2 の `UpdateStage` が `DefaultRouteSettings` をマージするため、
+CloudFormation でも削除できない。
+
+実証: 2026-10-22 の dev デプロイで、スタックのテンプレートは
+`{DataTraceEnabled: false, LoggingLevel: ERROR}` になったが、
+実体には `ThrottlingRateLimit: 10000 / ThrottlingBurstLimit: 5000`（手動設定値）が残った。
+
+IaC が実体を表さなくなるため、**アカウント共通の既定値を明示する形**にし、
+独自の低い値を設定してはならない理由を `serverless.yml` のコメントに残した。
+
+```yaml
+WebsocketsDeploymentStage:
+  Properties:
+    DefaultRouteSettings:
+      # アカウント共通の既定値と同値。下げると応答配信が壊れる
+      ThrottlingRateLimit: 10000
+      ThrottlingBurstLimit: 5000
+      DataTraceEnabled: false
+      LoggingLevel: ERROR
+```
+
+## 最終的な構成
+
+| 項目 | 状態 |
+| --- | --- |
+| Lambda 予約同時実行 | **100（有効。これが唯一の歯止め）** |
+| ステージのスロットリング | アカウント共通の既定値と同値（ステージ固有の上乗せなし） |
+| アクセスログ | 有効（保持90日） |
+| `DataTraceEnabled` | false |
+
+## リリース後の確認
+
+| 条件 | 結果 |
+| --- | --- |
+| 逐次100チャンク（13件/秒・実際のストリーミングと同じ形） | **100/100 成功** |
+| 並列5応答ぶん 200チャンク（62件/秒） | **200/200 成功** |
+
+**今回は応答配信の経路を実際に通してからリリースした。**
+
+## 今後この API を触る人へ
+
+- **ステージ／ルートに独自の低いスロットリング値を設定しない。** 応答配信が壊れる
+- 流量の歯止めが必要なら `reservedConcurrency` を使う
+- 設定変更後は、**接続や異常系だけでなく、正規の応答を最低1件通して確認する**

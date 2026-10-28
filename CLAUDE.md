@@ -211,6 +211,7 @@ Atlassian の MCP コネクタ（`claude.ai Atlassian`）経由で起票・更�
 管理画面・拡張機能 API への攻撃のおそれを通知する本番アラートの監視・一次対応の手順。2026-10-14 の不正アクセスを受けて新設したもので、当面は日次で確認する。
 
 - 通知先: Slack **#manage-api-security-alert-prod**（`C0C9KEU4GF9`）。CloudWatch Alarm（Amazon Q bot）が ALARM 時に投稿する。
+- dev 環境の同じ通知は **#manage-api-security-alert-dev**（`C0CA0LN9D8A`）。**prod と合わせて確認する**。手順は同じで、ロググループは `mngV1*-dev`、WAF ログは ACL `ag-onboarding-manage-api-dev` の配下。dev は社内の検証で発火することが多い（送信元 IP・社内アドレスで見分ける）。
 - **対応手順の正本は同チャンネルの canvas**（通知種別ごとの「調べ方／判断と対応」）。必ず canvas を読んでから対応する。
 - AWS: アカウント `091413534636` / リージョン `ap-northeast-1`。
 

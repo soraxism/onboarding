@@ -25,6 +25,23 @@ python3.11 は **414 関数**。**すべて CloudFormation（serverless）の管
 **ランタイムは各 `serverless.yml` の `provider.runtime: python3.11` で一括指定**されている。
 コンソールで個別に変えると次のデプロイで戻るため、**移行はリポジトリの変更＋デプロイで行う**（ONBS-2255 B の3関数とは扱いが違う）。
 
+### ECS は対象外（ONBS-2277 で扱う）
+
+この計画は Lambda のみが対象。ECS はイメージに Python を同梱するため、AWS 側のサポート終了で作成・更新が止まることはない。
+ただし Python 本体のセキュリティ修正は終わる（3.11 は 2027-10、3.12 は 2028-10）ので、棚卸しと移行は **ONBS-2277** で別に進める。
+
+2026-10-28 時点で、手元のリポジトリの Dockerfile と prod のイメージタグを照合した結果:
+
+| リポジトリ | 用途 | Python |
+| --- | --- | --- |
+| Onboarding-AI-API | ECS `onboarding-ai-api-service` | 3.13 |
+| Onboarding-API-Next（fastapi） | ECS `onboarding-api-service` | 3.12 |
+| onboarding-batch（約20バッチ） | ECS の定期バッチ | 3.12 |
+| Onboarding-Atlas | ECS（dev のみ） | 3.12 |
+| onboarding-api `dockerfiles/api` | ローカル開発用（docker-compose）のみ | 3.11 |
+
+リポジトリが手元になく未確認: `custom-layer-api`・`kurashi-tepco`・`resol-rec`・`report-site-access-batch`・`report-ai-usage-batch`。
+
 ## 移行先
 
 **python3.13**（サポート終了 2029-06-30）。B の3関数と揃える。

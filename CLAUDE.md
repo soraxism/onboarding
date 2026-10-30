@@ -136,7 +136,7 @@ git -C {リポジトリ} worktree prune
 
 | リポジトリ | ワークツリーで追加に必要なもの |
 |---|---|
-| `onboarding-manage-web` | テスト前に `npx nuxi prepare`。`.nuxt/tsconfig.json` が無いと vitest が起動しない |
+| `onboarding-manage-web` | テスト前に `npx nuxi prepare`。`.nuxt/tsconfig.json` が無いと vitest が起動しない。Node は `.node-version`（24.22.1）。本体の `node_modules` が古い Node・古い lock で入っているときは、symlink せずワークツリーで `npm ci` する。build・E2E には `app/config/.env.local` の symlink が要る |
 | `onboarding-web` | `ext-version-bump` を使うなら `.env.webstore` の symlink（git 管理外で本体にしかない） |
 
 `docs/testing/credentials.local.md` のように **git 管理外で本体にしか無いファイル**は
@@ -272,6 +272,40 @@ gh pr comment {PR番号} --body "@coderabbitai review"
 ```
 
 レビュー開始までは3〜4分程度かかる。監視と指摘対応は `stands-babysit-coderabbit` スキルに任せてよい。
+
+#### onboarding-manage-web はハーネスを通せば人のレビュー指定は不要
+
+`onboarding-manage-web` では、PR を作る前にリポジトリのハーネス（`/harness-branch` と `/migrate-audit`）を
+両方通したブランチは、レビュワー（谷川さん `yu-kky`）を指定しなくてよい（2026-10-30 谷川さんの周知。
+[Slack](https://stands-inc.slack.com/archives/C02RC5FRF47/p1793329148528189)）。CodeRabbit のレビューは従来どおり受ける。
+
+hook はセッションを起動したディレクトリの `.claude/settings.json` からしか読まれないため、
+`onboarding/` で起動したセッションでは manage-web の hook が 1 度も走っていない。ブランチの最後に
+両コマンドの手順（`.claude/commands/harness-branch.md`・`migrate-audit.md`）を作業ツリーで実行する。
+
+```bash
+cd $WT   # 作業ブランチのワークツリー
+export NODENV_VERSION=24.22.1   # .node-version に合わせる
+git -C {リポジトリ} fetch origin master:master   # ハーネスはローカルの master との分岐点を見る（下記）
+
+# /harness-branch
+node .claude/hooks/stop-write-check.mjs --branch    # 止める側。「指摘なし」になるまで直す
+node .claude/hooks/post-bash-check.mjs --branch     # 通知側。E2E などは回すか繰り越すかを判断する
+
+# /migrate-audit
+npm run test-coverage-gap
+npm run coverage-map
+```
+
+- **ローカルの `master` を最新にしてから流す。** 分岐点はローカルの `master` で取る。古いままだと、
+  他の人がリリースした分まで「このブランチの変更」として検査され、無関係な指摘が大量に出る
+- **作業ブランチが古い master から切ってあるなら、先に `origin/master` を取り込む。** ハーネス自体が
+  master にしか無いことがある
+- 変更には `docs/feature/{チケット番号}/plan.md`（計画）と `result.md`（結果・繰り越し）が要る。無いと指摘される
+- E2E（`npm run test:e2e`）のビルドは `app/config/.env.local` を読む。git 管理外で本体にしか無いため、
+  ワークツリーでは symlink する（`ln -s {リポジトリ}/app/config/.env.local $WT/app/config/.env.local`）。
+  無いと初期化で落ち、spec が全件失敗する
+- PR 本文に、両コマンドを通したこと（止める側が「指摘なし」・監査の件数）を書く
 
 #### push ごとにトリガーが必要
 

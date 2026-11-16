@@ -439,6 +439,16 @@ GitHub Actions で自動同期される。同期ワークフローがないリ�
 - 依存関係を踏まえたリリース順序を決め、**実装者に提示して確認を取ってから**リリースを開始する（例: API → Batch → Web）
 - 決定した順序は `docs/features/{Jiraチケット番号}/{YYYY-MM-DD}_release-runbook.md` に残す
 
+### 8. onboarding-batch の本番反映
+
+**`onboarding-batch` は main へのマージとタグ発行では本番に出ない。** 本番のタスク定義は日付タグの
+イメージを、EventBridge ルールはタスク定義のリビジョンを固定で参照している。タグを打ったあと、
+[docs/release/batch-prod-release.md](docs/release/batch-prod-release.md) の手順
+（ECR へ push → 新しいリビジョン → 手動実行で確認 → ルールの参照先を切り替え）で反映する。
+
+- main には本番に出ていない他者の共通部分の変更が入っていることがある。一緒に出るものを担当者に確認してから進める
+- format-cf-logs は出力へ追記するため手動実行しない（二重になる）。切り替えたあと定期実行で確かめる
+
 ## dev 環境へのデプロイ（動作確認の前に行う）
 
 **dev 環境は `develop` ブランチから作られる。** 作業ブランチに実装しただけでは

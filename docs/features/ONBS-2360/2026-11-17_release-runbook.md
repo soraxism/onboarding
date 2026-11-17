@@ -11,7 +11,10 @@
 | 3 | `onboarding-manage-api` | 旧 Manage-API の更新のバリデーションは `options.reasoning_effort` を知らないキーとして 400 にする。管理画面より先に出す |
 | 4 | `onboarding-manage-web` | |
 
-**2 から 4 は間を空けずに続けて行う。** 2 のあと旧管理画面では、gpt-6.1-terra が区別なく2つ並ぶ（どちらを選んでも推論の度合いは保存されない）。
+**2 から 4 は間を空けずに続けて行う。** 2 から 3 までのあいだは次のことが起きる。
+
+- 旧管理画面では gpt-6.1-terra が区別なく2つ並ぶ（どちらを選んでも推論の度合いは保存されない）
+- 旧 Manage-API で新規作成したチャットは、既定の gpt-6.1-terra が推論の度合いなしで保存される（OpenAI 側の既定の度合いで動く）。この間に作られたチャットは、3 のあと AI モデルを選び直す
 
 ## DB マイグレーション
 
@@ -19,15 +22,19 @@
 mysql ... < onboarding-manage-api/mysql/migrations/20261117_add_reasoning_effort_to_llm_models.sql
 ```
 
-- 末尾の SELECT で、priority 1・2 に gpt-6.1-terra（none / medium）、3 以降に既存のモデルが元の順で並び、既定（`default_flag = 1`）が gpt-5.1 のままであることを確かめる
+- 末尾の SELECT で、priority 1・2 に gpt-6.1-terra（none / medium）、3 以降に既存のモデルが元の順で並び、既定（`default_flag = 1`）が gpt-6.1-terra（none）だけに立っていることを確かめる
 - 何度流しても結果は変わらない（カラムと gpt-6.1-terra の行が既にあれば何もしない）
 
 ### 戻すとき
 
-コードを戻したあとに流す。gpt-6.1-terra を選んだチャットがあれば、先に別のモデルへ変えておく。
+コードを戻したあとに流す。gpt-6.1-terra を選んだチャット（適用後に新規作成したものは既定で gpt-6.1-terra になっている）があれば、先に別のモデルへ変えておく。
+
+**適用前に、本番の既定（`SELECT model FROM llm_models WHERE default_flag = 1`）を控えておく。** 戻すときに使う。
 
 ```sql
 DELETE FROM llm_models WHERE model = 'gpt-6.1-terra';
 UPDATE llm_models SET priority = priority - 2 ORDER BY priority ASC;
+-- 既定を元に戻す（適用前の既定。本番で適用前に確かめた値に合わせる）
+UPDATE llm_models SET default_flag = 1 WHERE model = 'gpt-5.1';
 ALTER TABLE llm_models DROP PRIMARY KEY, ADD PRIMARY KEY (provider_code, model), DROP COLUMN reasoning_effort;
 ```

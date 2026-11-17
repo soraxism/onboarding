@@ -24,7 +24,7 @@
 保存内容はチャット詳細 API の `data.llm`、OpenAI へ渡した値は AI-API（`/ecs/dev-onboarding-ai-api`）の `Retrieved reasoning effort` で照合した。
 検証用チャットは確認後に下書きへ戻して削除済み。
 
-**dev の `llm_models` は gpt-4.1 / gpt-4o / gpt-5 が利用不可（`is_available = 0`）。** 選択肢に出るのは gpt-6.1-terra（推論なし／あり）と gpt-5.1 の 3 つで、
+**dev の `llm_models` は gpt-4.1 / gpt-4o / gpt-5 が利用不可（`is_available = 0`）。** gpt-4.1 と gpt-5 は近々廃止予定のため、2026-11-17 に dev で無効にした。 選択肢に出るのは gpt-6.1-terra（推論なし／あり）と gpt-5.1 の 3 つで、
 推論に対応しないモデル（D8）は dev では選べない。本番の行の状態はリリース前に確かめる。
 
 | # | 項目 | 確かめ方 | 結果 |

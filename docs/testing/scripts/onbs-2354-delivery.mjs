@@ -45,10 +45,11 @@ for (const product of Object.values(env.products)) {
   const v2 = []
   page.on('response', async (res) => {
     if (!isV2Init(res.url())) return
-    v2.push({ status: res.status(), url: res.url() })
+    // 番号は本文を待つ前に決める。待った後だと、続けて届いた応答と同じ番号になって上書きされる
+    const n = v2.push({ status: res.status(), url: res.url() })
     // デプロイ前後で応答を比べるため、本文を残す（検証用プロダクトの配信設定のみ）
     const body = await res.text().catch(() => '')
-    fs.writeFileSync(path.join(outDir, `${product.key}_init_${v2.length}.json`), body)
+    fs.writeFileSync(path.join(outDir, `${product.key}_init_${n}.json`), body)
   })
   const consoleErrors = []
   page.on('console', (msg) => {

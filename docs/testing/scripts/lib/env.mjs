@@ -68,7 +68,12 @@ export function loadCredentials(env = 'dev') {
     return value
   }
 
-  const manageSection = `管理画面（${env}）`
+  // dev は利用者ごとに節を分けることがある（`管理画面（dev・一般ユーザー）` 等）。
+  // スクリプトは二段階認証が無効な一般ユーザーでしかログインできないため、あればそれを使う
+  const generalUserSection = `管理画面（${env}・一般ユーザー）`
+  const manageSection = text.split(/^## /m).some((s) => s.startsWith(generalUserSection))
+    ? generalUserSection
+    : `管理画面（${env}）`
   const required = (section, label) => {
     const value = pick(section, label)
     if (value === null) throw new Error(`credentials.local.md の「${section}」の「${label}」は必須です`)

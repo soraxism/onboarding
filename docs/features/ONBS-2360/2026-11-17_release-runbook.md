@@ -25,6 +25,18 @@ mysql ... < onboarding-manage-api/mysql/migrations/20261117_add_reasoning_effort
 - 末尾の SELECT で、priority 1・2 に gpt-6.1-terra（none / medium）、3 以降に既存のモデルが元の順で並び、既定（`default_flag = 1`）が gpt-6.1-terra（none）だけに立っていることを確かめる
 - 何度流しても結果は変わらない（カラムと gpt-6.1-terra の行が既にあれば何もしない）
 
+### gpt-4.1・gpt-5 の無効化（本番）
+
+dev と同じく、近々廃止予定の gpt-4.1・gpt-5 を本番でも選択肢から外す（2026-11-17 決定）。マイグレーションとは別に、人が流す。
+
+```sql
+UPDATE llm_models SET is_available = 0 WHERE provider_code = 'openai' AND model IN ('gpt-4.1', 'gpt-5');
+```
+
+- `is_available` を見ているのは管理画面の選択肢だけ。AI-API は見ないため、すでに gpt-4.1・gpt-5 を選んでいるチャットはそのまま応答する（管理画面では選択中のモデルとして無効の状態で表示される）
+- 既定は gpt-6.1-terra（推論なし）に移るので、新規作成には影響しない
+- 流したあとの P1 の選択肢は、gpt-6.1-terra（推論なし）・gpt-6.1-terra（推論あり）・gpt-5.1 に、本番で利用可能なほかのモデルが続く
+
 ### 戻すとき
 
 コードを戻したあとに流す。gpt-6.1-terra を選んだチャット（適用後に新規作成したものは既定で gpt-6.1-terra になっている）があれば、先に別のモデルへ変えておく。

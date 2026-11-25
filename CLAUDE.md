@@ -226,7 +226,7 @@ Atlassian の MCP コネクタ（`claude.ai Atlassian`）経由で起票・更�
 3. **調査（読み取りのみ）**:
    - アプリのログ: CloudWatch Logs Insights。ロググループ `/aws/lambda/mngV1*-prod`（例 `mngV1PwReset-prod`・`mngV1Auth-prod`）。監査ログ `[AUDIT][REQUEST]`/`[AUDIT][RESPONSE]`、`email` 等は伏せ字。
    - 送信元 IP・国: WAF ログ（`s3://aws-waf-logs-stands-onboarding/AWSLogs/091413534636/WAFLogs/ap-northeast-1/ag-onboarding-manage-api-prod/YYYY/MM/DD/HH/MM/`。**時刻は UTC**＝JST−9h、5分パーティション）。
-   - **WAF ログの生行は Slack/Jira 等に貼らない**（ヘッダに `x-onboarding-api-token` が平文）。`clientIp`・`country`・`uri`・`action` だけを抽出し、**取得ファイルは処理後に必ず削除する**。
+   - **WAF ログの生行は Slack/Jira 等に貼らない**（送信元 IP やクエリ文字列が入り、配信 API の WAF ログにはエンドユーザーの個人データも載る。管理画面 API の WAF は認証用のヘッダを伏せているが、伏せる設定より前の古いログには平文が残っている可能性がある）。`clientIp`・`country`・`uri`・`action` だけを抽出し、**取得ファイルは処理後に必ず削除する**。
 4. **判断**: canvas 各節の「判断と対応」に従う。不審点なし（国内 IP・ALLOW・総当たりなし・併発アラートなし 等）→ 正規利用。不審点あり（海外 IP・総当たり・直前のロック/上限通知・2026-10-14 と同じ形 等）→ 乗っ取りとして扱う。
 5. **破壊的・対外的な対応（トークン失効・パスワード無効化・IP 遮断・本人連絡）は独断で実行しない。** 不審と判断した場合は実行前に空／文へエスカレーションする（canvas に手順はあるが、判断と実行は人が行う）。
    - **要確認と判断した通知には ⚠️（`warning`）リアクションを付ける**（✅ は付けない。人が判断を終えてから付ける）。

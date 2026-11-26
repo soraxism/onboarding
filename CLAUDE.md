@@ -587,6 +587,49 @@ docs/features/ONBS-1938/
 └── 2026-08-18_release-runbook.md                          # リリース手順
 ```
 
+## ブラウザでの確認（エージェント用の Chrome）
+
+先方サイトでのタグの動作確認など、ログインが要る画面をエージェントが操作するときは、
+**エージェント用の Chrome（`chrome-agent`）を使う。** いつもの Chrome にはつながない。
+
+いつもの Chrome につなぐと、Slack・AWS コンソール・Google などのログインもまとめてエージェントに渡る。
+エージェント用の Chrome は別のプロファイル（`~/.chrome-agent-profile`）なので、確認に要るサイトのログインだけを持たせられる。
+
+```bash
+chrome-agent start [URL]   # 起動（http://127.0.0.1:9223 でデバッグ用ポートを開く）
+chrome-agent status        # 起動中か、つないでいるプロセスが残っていないか
+chrome-agent stop          # 停止
+```
+
+- 実体は `~/.local/bin/chrome-agent`。いつもの Chrome と同時に起動できる
+- **起動・停止はサンドボックスの外で実行する**（`dangerouslyDisableSandbox`）。サンドボックス内からはポートへの接続だけはできる
+
+### 進め方
+
+1. `chrome-agent start` で起動する
+2. **そのサイトに初めて入るときは、人にログインしてもらう。** エージェントはパスワードを入力しない。ログインはプロファイルに残るので、次からは不要
+3. Playwright でつなぐ。Playwright は `onboarding-e2e-test/node_modules/playwright` にある
+
+   ```js
+   const { chromium } = require('/Users/soraxism/Dev/stands/onboarding/onboarding-e2e-test/node_modules/playwright')
+   const browser = await chromium.connectOverCDP('http://127.0.0.1:9223', { timeout: 15000 })
+   const page = await browser.contexts()[0].newPage()
+   ```
+
+4. 終わったら、開いたページを閉じてから `browser.close()` し、`process.exit()` でプロセスを確実に終わらせる。
+   `browser.close()` は接続を切るだけで、Chrome は閉じない
+5. `chrome-agent status` で、つないだままのプロセスが残っていないことを確かめてから `chrome-agent stop` で止める
+
+### 守ること
+
+- **スクリプト全体にタイムアウトを付ける**（`setTimeout(() => process.exit(2), …)`）。接続に失敗したまま止まったプロセスが、裏でつながり続けることがある
+- **先方の本番サイトで当社のタグを試すときは、`api.onboarding-app.io` への送信を止める**（`page.route('https://api.onboarding-app.io/**', r => r.abort())`）。
+  本番の onboarding-init へ送ると、顧客のデータに確認の分が混ざる。送るはずだった URL だけを見て判定する
+- ユーザーID などの値は、会話にも出さずに件数・桁数・判定結果で報告する
+- 使い終わったら止めておく。起動中は、手元のどのプロセスからでも操作できる
+
+**なぜこれを置くか**: 2026-11-26、TimeRex 向けのタグをいつもの Chrome で確かめた。Chrome の「リモートデバッグを許可」は接続のたびに許可のダイアログを出すうえ、接続に失敗したプロセスが残って何度もダイアログが出た。いつもの Chrome のログインがすべてエージェントに渡る点も避けたかった。
+
 ## 朝会の報告まとめ
 
 「朝会で報告するのでまとめて」「今日やったことをまとめて」と言われたら、**このセッションだけでなく他のセッションも含めて**拾い、朝会でさっと読み上げられる形にまとめる。

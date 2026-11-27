@@ -52,31 +52,79 @@ Worker から manage-api へ毎回問い合わせる方式は、ヘルプの可�
 
 ```
 利用者 ──▶ help.onboarding-app.io（Cloudflare）
-             └─ Worker: Cookie の署名と有効期限を検証
+             └─ Worker help-gate: Cookie の署名と有効期限を検証
                   ├─ 正しい → Super（cname.super.so）へ流す
-                  └─ 不正   → manage.onboarding-app.io/help-auth?return={元のURL}
-                                ├─ トークンあり → manage-api で Cookie を再発行 → 元のURLへ
-                                └─ トークンなし → ログイン → Cookie 発行 → 元のURLへ
+                  └─ ない・期限切れ・不正 → 302 で manage.onboarding-app.io/help-auth?return={元のURL}
+                       ├─ ログイン済み → POST /v1/help-session → Set-Cookie → 元のURLへ
+                       └─ 未ログイン  → 戻り先を sessionStorage に預けて /login
+                                        → ログイン → /help-auth → 同上
 ```
 
-- Cookie: `Domain=.onboarding-app.io`・`HttpOnly`・`Secure`・`SameSite=Lax`。中身は有効期限と HMAC 署名。
-  ログイン時・トークン更新時に発行し、ログアウト時に消す
-- 管理画面 → manage-api のリクエストに `credentials: 'include'`。manage-api の CORS は
-  `Access-Control-Allow-Credentials: true` とオリジンの明示（`*` は不可）。同一サイトなのでサードパーティ Cookie の制限は受けない
-- `/.well-known/acme-challenge` は検証の対象外にする（Vercel の証明書更新のため）
-- Cloudflare の SSL は Full (strict)。Super の既知の問題として `ERR_TOO_MANY_REDIRECTS` がある
+| 部品 | 置き場所 | 内容 |
+| --- | --- | --- |
+| Cookie の発行 | manage-api `api/rest/functions/mng-v1-help-session/` | `POST /v1/help-session`。API トークンで認証し、Cookie を発行する |
+| Cookie の検証 | manage-api `cloudflare/help-gate/` | Cloudflare Worker。手順は同ディレクトリの README |
+| 中継ページ | manage-web `app/pages/help-auth.vue` ほか | 設計は manage-web の `docs/feature/ONBS-2378/plan.md` |
+
+### Cookie
+
+- `Domain=.onboarding-app.io; Path=/; Max-Age=86400; Secure; HttpOnly; SameSite=Lax`
+- 値は「有効期限（UNIX 秒）.署名」。署名は有効期限を HMAC-SHA256 で署名し base64url（パディングなし）にしたもの。
+  manage-api と Worker の両方のテストに同じ値を置き、片方だけ形式を変えると落ちるようにしてある
+- **有効期限は 24 時間。** 切れても、管理画面にログインしていれば中継ページで自動で発行し直す（利用者の操作は要らない）
+- **ログイン・トークン更新・ログアウトの処理には手を入れない。** Cookie を出すのは専用のエンドポイント 1 本だけにした。
+  そのぶん、ログアウトしてもそのブラウザでは最大 24 時間ヘルプが見える（トライアルが終わった利用者も同じ）。競合対策としては許容した
+
+| 環境 | ホスト | Cookie 名 | 管理画面 | 署名の鍵（Secrets Manager） |
+| --- | --- | --- | --- | --- |
+| dev | `help-stg.onboarding-app.io` | `onb_help_dev` | `dev-manage.onboarding-app.io` | `dev/help-gate` |
+| prod | `help.onboarding-app.io` | `onb_help` | `manage.onboarding-app.io` | `prod/help-gate` |
+
+どちらも `.onboarding-app.io` に付くため、名前を分けないと dev と本番の Cookie が互いを上書きする。
+鍵は Secrets Manager の `HELP_COOKIE_SIGNING_KEY` と、Worker の secret `SIGNING_KEY` に同じ値を入れる。
+
+### CORS
+
+管理画面（`manage.onboarding-app.io`）から manage-api（`manage-api.onboarding-app.io`）は別オリジンなので、
+Cookie を受け取るには両側の指定が要る。
+
+- 管理画面: `credentials: 'include'` を付けて送る（このエンドポイントだけ）
+- manage-api: `function.yml` の `allowCredentials: true`（プリフライトの応答）と、Lambda の応答で
+  `Access-Control-Allow-Origin` に管理画面のオリジンを明示し `Access-Control-Allow-Credentials: true` を返す。
+  共通の応答は `Access-Control-Allow-Origin: *` だが、credentials 付きでは `*` は受け付けられない。
+  **401 も同じ形で返す。** そうしないとブラウザが 401 を読めず、管理画面の API トークンの再発行が走らない
+
+同一サイト（`onboarding-app.io`）なので、サードパーティ Cookie の制限は受けない。
+
+### 戻り先
+
+- 中継ページは `return` がヘルプのオリジンのときだけ受け付ける。検査しないと、ログイン後に任意のサイトへ
+  飛ばせる（オープンリダイレクト）
+- 戻り先は sessionStorage に預ける。タブを閉じれば消え、中継ページで取り出したときにも消す。
+  ログイン後は `useAuth.completeLogin` が、戻り先を預けていれば中継ページへ送る（パスワード・二要素・パスキー共通）
+
+### その他
+
+- `/.well-known/acme-challenge` は Worker で検証しない（Vercel の証明書更新のため）
+- Cloudflare の SSL は Full (strict)。Super の既知の問題として `ERR_TOO_MANY_REDIRECTS` があるが、検証では起きなかった
+- Cloudflare の証明書はホスト名ごとに発行され、プロキシを有効にしてから約 10 分かかる。
+  本番の切り替えではこの間 TLS が通らないため、手順で考慮する
 
 ### 利用者から見た挙動
 
 - 管理画面にログインしたのと同じブラウザなら、Slack やメールのリンクからでも見られる
-- 別のブラウザやスマホのアプリ内ブラウザでは、ログインを求められる
+- 管理画面からヘルプを開くと、Cookie が無い・切れているときだけ中継ページを一瞬経由する
+- 別のブラウザやスマホのアプリ内ブラウザでは、ログインを求められる。ログインすると元のヘルプのページが開く
 - iframe での埋め込みは Cookie が送られず表示できない（該当はテスト用ページのみ）
-- 未ログインの見込み客・営業資料からのリンクでは見られなくなる
+- 未ログインの見込み客・営業資料からのリンクでは見られなくなる。Slack のリンクのプレビューもログイン画面になる
 
 ### 検証
 
-Super の手順は Cloudflare で DNS をフル管理している前提で、CNAME セットアップで動くかは未確認。
-**本番の DNS を切り替える前に、検証用のサブドメインで Super へのプロキシと Worker を通して確かめる。**
+2026-11-27、検証用の `help-stg.onboarding-app.io` で確かめた（経緯と結果は Jira のコメント）。
+
+- Cloudflare を挟んでも Super のページは表示できる（スラッグ・ID 形式とも 200、リダイレクトのループなし）
+- Super の既定ドメイン（`*.super.site`）は `help.onboarding-app.io` へ 308 でリダイレクトされ、抜け道にならない
+- Notion を API で読む方式（非公開ページ）は、このサイトの管理画面では選べない
 
 ## 参考
 

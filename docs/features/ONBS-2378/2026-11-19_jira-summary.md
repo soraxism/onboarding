@@ -11,10 +11,10 @@
 
 ## 対応方針（暫定）
 
-1. manage-api: ログイン時・トークン更新時に署名付き Cookie を発行し、ログアウト時に消す
-2. manage-web: Cookie を受け取る設定と、Cookie を再発行して元のヘルプへ戻す中継ページ
-3. Cloudflare: `help.onboarding-app.io` を Cloudflare 経由にし、Worker で Cookie を検証する
-4. Route53: `help` の CNAME を Cloudflare へ切り替える（検証用サブドメインで確認してから）
+1. manage-api: Cookie を発行する専用のエンドポイント `POST /v1/help-session`（署名付き・24 時間）
+2. manage-web: Worker が送る中継ページ `/help-auth`。ログイン済みなら Cookie を発行して元のヘルプへ戻し、未ログインならログインのあとに戻す
+3. Cloudflare: `help.onboarding-app.io` を Cloudflare 経由にし、Worker（manage-api の `cloudflare/help-gate`）で Cookie を検証する
+4. Route53: `help` の CNAME を Cloudflare へ切り替える（検証用の `help-stg` で確認してから）
 
 既知の制約: Notion 側は Web 公開のままなので、URL の Notion ページ ID を付け替えると読める。本移行で解消する。
 
@@ -22,7 +22,7 @@
 
 | リポジトリ・設定 | 内容 |
 | --- | --- |
-| `onboarding-manage-api` | Cookie の発行・削除、CORS |
-| `onboarding-manage-web` | credentials の付与、中継ページ |
+| `onboarding-manage-api` | Cookie の発行、Worker のコード |
+| `onboarding-manage-web` | 中継ページ、ログイン後の戻り先 |
 | Cloudflare（`onboarding-app.io`） | DNS レコード、Worker |
 | Route53（`onboarding-app.io`） | `help` の CNAME の切り替え |
